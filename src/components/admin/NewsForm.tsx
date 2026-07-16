@@ -1,0 +1,188 @@
+"use client";
+
+import Link from "next/link";
+import { useFormState, useFormStatus } from "react-dom";
+import ImageUploader from "./ImageUploader";
+import { categoryOptions } from "@/lib/news";
+import type { NewsFormState } from "@/app/admin/actions";
+import type { NewsCategory } from "@prisma/client";
+
+type NewsInitial = {
+  title: string;
+  slug: string;
+  excerpt: string | null;
+  content: string;
+  author: string | null;
+  coverImage: string | null;
+  category: NewsCategory;
+  isPublished: boolean;
+};
+
+type Props = {
+  action: (state: NewsFormState, formData: FormData) => Promise<NewsFormState>;
+  initial?: NewsInitial;
+  submitLabel: string;
+};
+
+const initialState: NewsFormState = { status: "idle" };
+
+const fieldClass =
+  "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-conplan outline-none transition-colors placeholder:text-slate-400 focus:border-marconi focus:ring-2 focus:ring-marconi/20";
+
+function SubmitButton({ label }: { label: string }) {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="inline-flex items-center justify-center gap-2 rounded-full bg-marconi px-6 py-3 text-sm font-semibold text-white shadow-gold transition-all hover:-translate-y-0.5 hover:bg-marconi-dark disabled:cursor-not-allowed disabled:opacity-70"
+    >
+      {pending ? "Salvando..." : label}
+    </button>
+  );
+}
+
+export default function NewsForm({ action, initial, submitLabel }: Props) {
+  const [state, formAction] = useFormState(action, initialState);
+
+  return (
+    <form action={formAction} className="space-y-6">
+      {state.status === "error" && state.message && (
+        <div className="rounded-xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">
+          {state.message}
+        </div>
+      )}
+
+      <div>
+        <label htmlFor="title" className="mb-1.5 block text-sm font-medium text-conplan">
+          Título
+        </label>
+        <input
+          id="title"
+          name="title"
+          type="text"
+          defaultValue={initial?.title}
+          placeholder="Título da notícia"
+          className={fieldClass}
+        />
+        {state.errors?.title && (
+          <p className="mt-1 text-xs text-red-600">{state.errors.title}</p>
+        )}
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div>
+          <label htmlFor="category" className="mb-1.5 block text-sm font-medium text-conplan">
+            Categoria
+          </label>
+          <select
+            id="category"
+            name="category"
+            defaultValue={initial?.category ?? "GESTAO_PUBLICA"}
+            className={fieldClass}
+          >
+            {categoryOptions.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+          {state.errors?.category && (
+            <p className="mt-1 text-xs text-red-600">{state.errors.category}</p>
+          )}
+        </div>
+
+        <div>
+          <label htmlFor="slug" className="mb-1.5 block text-sm font-medium text-conplan">
+            Slug{" "}
+            <span className="font-normal text-slate-400">(opcional)</span>
+          </label>
+          <input
+            id="slug"
+            name="slug"
+            type="text"
+            defaultValue={initial?.slug}
+            placeholder="gerado automaticamente do título"
+            className={fieldClass}
+          />
+        </div>
+      </div>
+
+      <ImageUploader name="coverImage" defaultValue={initial?.coverImage} />
+
+      <div>
+        <label htmlFor="author" className="mb-1.5 block text-sm font-medium text-conplan">
+          Autor{" "}
+          <span className="font-normal text-slate-400">(opcional)</span>
+        </label>
+        <input
+          id="author"
+          name="author"
+          type="text"
+          defaultValue={initial?.author ?? ""}
+          placeholder="Redação Grupo Dr. Marconi Nunes"
+          className={fieldClass}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="excerpt" className="mb-1.5 block text-sm font-medium text-conplan">
+          Resumo{" "}
+          <span className="font-normal text-slate-400">
+            (opcional — aparece nos cards e na busca)
+          </span>
+        </label>
+        <textarea
+          id="excerpt"
+          name="excerpt"
+          rows={2}
+          defaultValue={initial?.excerpt ?? ""}
+          placeholder="Uma ou duas frases resumindo a notícia..."
+          className={`${fieldClass} resize-y`}
+        />
+      </div>
+
+      <div>
+        <label htmlFor="content" className="mb-1.5 block text-sm font-medium text-conplan">
+          Conteúdo{" "}
+          <span className="font-normal text-slate-400">
+            (deixe uma linha em branco para separar parágrafos)
+          </span>
+        </label>
+        <textarea
+          id="content"
+          name="content"
+          rows={8}
+          defaultValue={initial?.content}
+          placeholder="Escreva o conteúdo da notícia..."
+          className={`${fieldClass} resize-y`}
+        />
+        {state.errors?.content && (
+          <p className="mt-1 text-xs text-red-600">{state.errors.content}</p>
+        )}
+      </div>
+
+      <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-cloud px-4 py-3">
+        <input
+          type="checkbox"
+          name="isPublished"
+          defaultChecked={initial?.isPublished ?? false}
+          className="h-4 w-4 rounded border-slate-300 text-marconi focus:ring-marconi"
+        />
+        <span className="text-sm font-medium text-conplan">
+          Publicar imediatamente
+        </span>
+      </label>
+
+      <div className="flex items-center gap-3 pt-2">
+        <SubmitButton label={submitLabel} />
+        <Link
+          href="/admin/noticias"
+          className="rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"
+        >
+          Cancelar
+        </Link>
+      </div>
+    </form>
+  );
+}

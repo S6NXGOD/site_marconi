@@ -1,0 +1,44 @@
+# ─── dependências ───
+/node_modules
+/.pnp
+.pnp.js
+
+# ─── build ───
+/.next/
+/out/
+/build
+next-env.d.ts
+*.tsbuildinfo
+
+# ─── variáveis de ambiente (NUNCA versionar) ───
+.env
+.env.local
+.env.*.local
+.env.production
+!.env.example
+
+# ─── uploads do painel ───
+# Conteúdo, não código. Em produção vivem no volume do Railway.
+/uploads/*
+!/uploads/.gitkeep
+
+# ─── logs e temporários ───
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# ─── editores / SO ───
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# ─── certificados e chaves ───
+*.pem
+*.key
+
+# ─── scripts temporários de verificação ───
+/prisma/_*.ts

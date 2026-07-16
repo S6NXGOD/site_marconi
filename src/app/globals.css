@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Compensa o header fixo ao navegar por âncoras (#areas-de-atuacao, etc.) */
+  section[id],
+  aside[id] {
+    scroll-margin-top: 96px;
+  }
+
+  body {
+    @apply bg-cloud text-ink antialiased font-sans;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    @apply font-serif tracking-tight;
+  }
+}
+
+@layer components {
+  /* Container padrão de seção */
+  .section-shell {
+    @apply mx-auto w-full max-w-7xl px-6 lg:px-8;
+  }
+
+  /* Rótulo de seção (kicker) */
+  .kicker {
+    @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em];
+  }
+}
+
+/* Realce sutil de seleção de texto */
+::selection {
+  background-color: #b8942e;
+  color: #ffffff;
+}
+
+/* Acessibilidade: desliga animações para quem pediu menos movimento
+   (o pulsar do alerta de prazos não deve incomodar esses usuários). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
