@@ -11,6 +11,26 @@ if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_SECRET) {
   );
 }
 
+/**
+ * Rede de segurança para o NEXTAUTH_URL.
+ *
+ * O NextAuth v4 lê essa variável direto do ambiente para montar os callbacks
+ * do login. Se ela vier vazia — ou preenchida com uma referência que não
+ * resolveu (ex.: "${{NEXTAUTH_URL}}", que aponta para si mesma) — o login
+ * quebra de um jeito difícil de diagnosticar.
+ *
+ * Aqui derivamos a URL do domínio público que o próprio Railway injeta.
+ */
+const nextAuthUrl = process.env.NEXTAUTH_URL?.trim();
+const urlInvalida = !nextAuthUrl || !/^https?:\/\//i.test(nextAuthUrl);
+
+if (urlInvalida && process.env.RAILWAY_PUBLIC_DOMAIN) {
+  process.env.NEXTAUTH_URL = `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`;
+  console.warn(
+    `[auth] NEXTAUTH_URL ausente ou inválido — usando https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  );
+}
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt", maxAge: 60 * 60 * 8 }, // 8h

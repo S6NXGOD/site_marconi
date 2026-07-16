@@ -9,10 +9,17 @@
  *
  * Usada em metadataBase (OpenGraph/Twitter), robots.txt e sitemap.xml.
  */
+/** Só aceita URL absoluta — protege contra referência não resolvida do Railway. */
+function valida(url: string | undefined): string | null {
+  const v = url?.trim();
+  if (!v || !/^https?:\/\//i.test(v)) return null;
+  return v.replace(/\/$/, "");
+}
+
 function resolve(): string {
   const explicit =
-    process.env.NEXT_PUBLIC_SITE_URL?.trim() || process.env.NEXTAUTH_URL?.trim();
-  if (explicit) return explicit.replace(/\/$/, "");
+    valida(process.env.NEXT_PUBLIC_SITE_URL) || valida(process.env.NEXTAUTH_URL);
+  if (explicit) return explicit;
 
   const railway = process.env.RAILWAY_PUBLIC_DOMAIN?.trim();
   if (railway) return `https://${railway.replace(/\/$/, "")}`;
