@@ -34,6 +34,7 @@ export default async function EditarAreaPage({
             description: a.description,
             image: a.image,
             imageAlt: a.imageAlt,
+            accent: a.accent,
             ctaLabel: a.ctaLabel,
             ctaHref: a.ctaHref,
             order: a.order,

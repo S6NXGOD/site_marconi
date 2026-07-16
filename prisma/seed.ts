@@ -45,6 +45,7 @@ async function conteudoPadrao() {
           "Assessoria técnica a prefeituras e órgãos públicos, com foco em conformidade, transparência e resultados junto aos órgãos de controle.",
         image: "/predio_marconinunes.jpg",
         imageAlt: "Sede do Grupo Dr. Marconi Nunes",
+        accent: "conplan", // azul — diferencia da vertente privada
         ctaLabel: "Falar com a CONPLAN",
         ctaHref: "#contato",
         order: 1,

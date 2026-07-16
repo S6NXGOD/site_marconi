@@ -448,6 +448,7 @@ function parseAreaForm(formData: FormData) {
     description: String(formData.get("description") ?? "").trim(),
     image: String(formData.get("image") ?? "").trim(),
     imageAlt: String(formData.get("imageAlt") ?? "").trim(),
+    accent: String(formData.get("accent") ?? "marconi") === "conplan" ? "conplan" : "marconi",
     ctaLabel: String(formData.get("ctaLabel") ?? "").trim() || "Fale conosco",
     ctaHref: String(formData.get("ctaHref") ?? "").trim() || "#contato",
     order: Number(formData.get("order") ?? 0) || 0,

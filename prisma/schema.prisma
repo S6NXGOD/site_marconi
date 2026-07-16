@@ -134,6 +134,9 @@ model BusinessArea {
   description String
   image       String? // foto 4:3 (upload no painel)
   imageAlt    String   @default("")
+  // Cor de destaque da aba: "marconi" (dourado) ou "conplan" (azul).
+  // Serve para o visitante perceber que trocou de vertente.
+  accent      String   @default("marconi")
   ctaLabel    String   @default("Fale conosco")
   ctaHref     String   @default("#contato")
   order       Int      @default(0)

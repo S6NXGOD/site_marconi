@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useFormState, useFormStatus } from "react-dom";
-import ImageUploader from "./ImageUploader";
+import ImageCropUploader from "./ImageCropUploader";
 import { categoryOptions } from "@/lib/news";
 import type { NewsFormState } from "@/app/admin/actions";
 import type { NewsCategory } from "@prisma/client";
@@ -108,7 +108,17 @@ export default function NewsForm({ action, initial, submitLabel }: Props) {
         </div>
       </div>
 
-      <ImageUploader name="coverImage" defaultValue={initial?.coverImage} />
+      {/* Capa em 16:9 e sempre JPEG.
+          O formato importa: o WhatsApp não renderiza WebP no preview do link,
+          e o recorte garante a proporção que as redes esperam ao compartilhar. */}
+      <ImageCropUploader
+        name="coverImage"
+        defaultValue={initial?.coverImage}
+        label="Foto de capa"
+        aspect={16 / 9}
+        outputWidth={1200}
+        hint="Proporção 16:9 — recomendado 1200×675px. É esta imagem que aparece ao compartilhar a notícia no WhatsApp. Sem foto, a capa usa o fundo de marca da categoria."
+      />
 
       <div>
         <label htmlFor="author" className="mb-1.5 block text-sm font-medium text-conplan">

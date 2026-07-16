@@ -6,6 +6,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import ImageCropUploader from "./ImageCropUploader";
 import type { AreaFormState } from "@/app/admin/actions";
 import { ICONS, Icon } from "@/lib/icons";
+import { ACCENT_OPTIONS } from "@/lib/accents";
 
 type Service = { name: string; icon: string };
 
@@ -16,6 +17,7 @@ type Initial = {
   description: string;
   image: string | null;
   imageAlt: string;
+  accent: string;
   ctaLabel: string;
   ctaHref: string;
   order: number;
@@ -52,6 +54,7 @@ export default function AreaForm({ action, initial, submitLabel }: Props) {
   const [services, setServices] = useState<Service[]>(
     initial?.services?.length ? initial.services : [{ name: "", icon: "chart" }]
   );
+  const [accent, setAccent] = useState(initial?.accent ?? "marconi");
 
   function alterar(i: number, patch: Partial<Service>) {
     setServices((s) => s.map((item, idx) => (idx === i ? { ...item, ...patch } : item)));
@@ -154,6 +157,41 @@ export default function AreaForm({ action, initial, submitLabel }: Props) {
         {state.errors?.description && (
           <p className="mt-1 text-xs text-red-600">{state.errors.description}</p>
         )}
+      </div>
+
+      {/* ——— Cor da vertente ——— */}
+      <div>
+        <span className="mb-1.5 block text-sm font-medium text-conplan">
+          Cor da vertente
+        </span>
+        <input type="hidden" name="accent" value={accent} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          {ACCENT_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => setAccent(opt.value)}
+              className={`flex min-h-11 items-center gap-3 rounded-xl border px-4 py-3 text-left transition-colors ${
+                accent === opt.value
+                  ? "border-marconi bg-marconi/5 ring-1 ring-marconi"
+                  : "border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <span
+                className={`h-6 w-6 shrink-0 rounded-full ${
+                  opt.value === "conplan" ? "bg-sky-600" : "bg-marconi"
+                }`}
+              />
+              <span className="text-sm font-semibold text-conplan">
+                {opt.label}
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs text-slate-400">
+          Define a cor da aba, dos ícones e do botão. Cores diferentes entre as
+          vertentes fazem o visitante perceber que trocou de aba.
+        </p>
       </div>
 
       {/* ——— Serviços ——— */}

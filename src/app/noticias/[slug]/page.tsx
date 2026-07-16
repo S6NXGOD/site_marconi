@@ -9,6 +9,7 @@ import NewsCover from "@/components/NewsCover";
 import ShareButton from "@/components/ShareButton";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { getWhatsappContacts } from "@/lib/content";
+import { SITE_URL } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,22 @@ async function getNews(slug: string) {
   });
 }
 
+/** Resumo curto para o preview; cai no início do texto se não houver excerpt. */
+function resumoDe(news: { excerpt: string | null; content: string }) {
+  const base = news.excerpt?.trim() || news.content.replace(/\s+/g, " ").trim();
+  return base.length > 160 ? `${base.slice(0, 157)}…` : base;
+}
+
+/**
+ * Imagem do preview (WhatsApp, Facebook, LinkedIn…).
+ * Usa a capa da notícia; sem capa, cai no logo do Grupo — assim o link
+ * compartilhado nunca aparece sem imagem.
+ */
+function imagemDe(coverImage: string | null) {
+  const src = coverImage || "/favicon.jpg";
+  return src.startsWith("http") ? src : `${SITE_URL}${src}`;
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -32,15 +49,35 @@ export async function generateMetadata({
   const news = await getNews(params.slug);
   if (!news) return { title: "Notícia não encontrada" };
 
+  const descricao = resumoDe(news);
+  const url = `${SITE_URL}/noticias/${news.slug}`;
+
   return {
-    title: `${news.title} | Grupo Dr. Marconi Nunes`,
-    description: news.excerpt ?? news.content.slice(0, 155),
+    title: news.title,
+    description: descricao,
+    alternates: { canonical: url },
     openGraph: {
       title: news.title,
-      description: news.excerpt ?? news.content.slice(0, 155),
+      description: descricao,
+      url,
       type: "article",
       publishedTime: news.createdAt.toISOString(),
-      images: news.coverImage ? [news.coverImage] : undefined,
+      modifiedTime: news.updatedAt.toISOString(),
+      authors: news.author ? [news.author] : undefined,
+      siteName: "Grupo Dr. Marconi Nunes",
+      locale: "pt_BR",
+      images: [
+        {
+          url: imagemDe(news.coverImage),
+          alt: news.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: news.title,
+      description: descricao,
+      images: [imagemDe(news.coverImage)],
     },
   };
 }

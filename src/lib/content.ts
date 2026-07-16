@@ -41,6 +41,7 @@ export async function getBusinessAreas(): Promise<AreaItem[]> {
         imageAlt: true,
         ctaLabel: true,
         ctaHref: true,
+        accent: true,
         services: {
           orderBy: { order: "asc" },
           select: { id: true, name: true, icon: true },
