@@ -5,6 +5,43 @@
 @layer base {
   html {
     scroll-behavior: smooth;
+    /* iOS: impede o texto de "crescer" sozinho ao girar a tela */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Nada pode furar a largura da tela no celular. */
+  html,
+  body {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  /* Mídia e tabelas nunca estouram o container. */
+  img,
+  video,
+  iframe,
+  svg {
+    max-width: 100%;
+  }
+
+  /* ——— iOS: o Safari dá ZOOM automático ao focar um campo com fonte
+     menor que 16px. É o que causava aquele zoom indesejado no painel.
+     No mobile, todo campo tem no mínimo 16px. ——— */
+  @media (max-width: 767px) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Alvos de toque confortáveis no celular (mín. ~44px é a recomendação). */
+  @media (max-width: 767px) {
+    button,
+    [role="button"],
+    a.btn {
+      touch-action: manipulation;
+    }
   }
 
   /* Compensa o header fixo ao navegar por âncoras (#areas-de-atuacao, etc.) */

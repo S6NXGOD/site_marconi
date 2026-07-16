@@ -33,7 +33,16 @@ if (urlInvalida && process.env.RAILWAY_PUBLIC_DOMAIN) {
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
-  session: { strategy: "jwt", maxAge: 60 * 60 * 8 }, // 8h
+  session: {
+    strategy: "jwt",
+    // 30 dias. Antes eram 8h — e como o token só é renovado a cada
+    // `updateAge`, a sessão morria antes de qualquer renovação: por isso
+    // o painel deslogava sozinho.
+    maxAge: 60 * 60 * 24 * 30,
+    // Renova o token a cada 24h de uso. Na prática: quem usa o painel
+    // continua logado indefinidamente; só sai clicando em "Sair".
+    updateAge: 60 * 60 * 24,
+  },
   // `useSecureCookies` NÃO é forçado de propósito: o NextAuth já o deriva do
   // protocolo do NEXTAUTH_URL (https -> cookie __Secure-, http -> comum).
   // Fixá-lo em NODE_ENV quebrava o login, porque o cookie era gravado com o

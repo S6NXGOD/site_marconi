@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { SITE_URL, SITE_NAME, IS_INDEXABLE } from "@/lib/site";
 import "./globals.css";
@@ -17,6 +17,15 @@ const playfair = Playfair_Display({
   weight: ["400", "500", "600", "700"],
   display: "swap",
 });
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  // `maximumScale`/`userScalable` NÃO são travados de propósito: impedir o
+  // pinch-zoom prejudica quem precisa ampliar para ler. O zoom automático
+  // indesejado do iOS é resolvido pela fonte de 16px nos campos (globals.css).
+  themeColor: "#0A192F",
+};
 
 export const metadata: Metadata = {
   // Necessário para OpenGraph/Twitter resolverem URLs absolutas.

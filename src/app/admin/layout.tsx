@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
-import AdminSidebar from "@/components/admin/AdminSidebar";
+import AdminShell from "@/components/admin/AdminShell";
 import RegisterSW from "@/components/admin/RegisterSW";
 
 export const metadata: Metadata = {
@@ -21,6 +21,10 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#0A192F",
+  // Não trava o zoom: bloquear o pinch prejudica quem precisa ampliar.
+  // O zoom indesejado do iOS é resolvido pela fonte de 16px nos campos.
+  width: "device-width",
+  initialScale: 1,
 };
 
 // Sempre renderiza sob demanda (dados dinâmicos + sessão).
@@ -36,19 +40,9 @@ export default async function AdminLayout({
   if (!session) redirect("/login");
 
   return (
-    <div className="min-h-screen bg-cloud lg:grid lg:grid-cols-[260px_1fr]">
+    <>
       <RegisterSW />
-      {/* Sidebar fixa em telas grandes */}
-      <div className="hidden lg:block lg:h-screen lg:sticky lg:top-0">
-        <AdminSidebar userName={session.user?.name} />
-      </div>
-
-      {/* Sidebar compacta no topo em telas pequenas */}
-      <div className="lg:hidden">
-        <AdminSidebar userName={session.user?.name} />
-      </div>
-
-      <main className="px-6 py-8 lg:px-10">{children}</main>
-    </div>
+      <AdminShell userName={session.user?.name}>{children}</AdminShell>
+    </>
   );
 }
