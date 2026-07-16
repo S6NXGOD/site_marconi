@@ -53,7 +53,7 @@ export const alertCategoryOptions: { value: AlertCategory; label: string }[] = [
 ];
 
 /** Dias restantes até a data limite (negativo = vencido). */
-export function daysUntil(date: Date | string): number {
+function daysUntil(date: Date | string): number {
   const target = typeof date === "string" ? new Date(date) : date;
   const today = new Date();
   const a = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
@@ -62,14 +62,14 @@ export function daysUntil(date: Date | string): number {
 }
 
 /** Um prazo é "da semana" quando vence em até 7 dias (e ainda não venceu). */
-export const URGENT_DAYS = 7;
+const URGENT_DAYS = 7;
 
 export function isUrgent(date: Date | string): boolean {
   const d = daysUntil(date);
   return d >= 0 && d <= URGENT_DAYS;
 }
 
-export type DeadlineTone = "danger" | "warning" | "neutral";
+type DeadlineTone = "danger" | "warning" | "neutral";
 
 /**
  * Rótulo humano da urgência.

@@ -204,6 +204,19 @@ export default function ContactForm() {
                   transition={{ duration: 0.25 }}
                   className="space-y-5"
                 >
+                  {/* Honeypot anti-spam: fora da tela e do fluxo de foco.
+                      Humano nunca preenche; bot que preenche tudo é filtrado. */}
+                  <div className="absolute -left-[9999px] top-0 h-0 w-0 overflow-hidden" aria-hidden>
+                    <label htmlFor="website">Não preencha este campo</label>
+                    <input
+                      id="website"
+                      name="website"
+                      type="text"
+                      tabIndex={-1}
+                      autoComplete="off"
+                    />
+                  </div>
+
                   <div>
                     <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-conplan">
                       Nome

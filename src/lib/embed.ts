@@ -29,10 +29,3 @@ export function toEmbedUrl(input: string | null | undefined): string | null {
   return null;
 }
 
-/** Primeira URL encontrada no texto — usada como fallback (abrir em nova aba). */
-export function extractUrl(input: string | null | undefined): string | null {
-  if (!input) return null;
-  const m = input.match(/https?:\/\/[^\s"'<>]+/i);
-  return m ? m[0] : null;
-}
-
