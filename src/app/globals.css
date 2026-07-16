@@ -9,10 +9,17 @@
     -webkit-text-size-adjust: 100%;
   }
 
-  /* Nada pode furar a largura da tela no celular. */
-  html,
+  /* Nada pode furar a largura da tela no celular.
+     `clip` e NÃO `hidden`: overflow-x:hidden cria um contexto de rolagem e
+     QUEBRA todo `position: sticky` descendente (sidebar do painel, barra
+     superior do mobile, painel de alertas). `clip` corta sem criar esse
+     contexto, então o sticky continua funcionando. */
+  html {
+    overflow-x: clip;
+  }
+
   body {
-    overflow-x: hidden;
+    overflow-x: clip;
     max-width: 100%;
   }
 
