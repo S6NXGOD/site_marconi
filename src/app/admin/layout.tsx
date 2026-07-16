@@ -1,12 +1,26 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import AdminSidebar from "@/components/admin/AdminSidebar";
+import RegisterSW from "@/components/admin/RegisterSW";
 
 export const metadata: Metadata = {
-  title: "Área Administrativa | Portal do Grupo",
+  title: "Painel | Grupo Dr. Marconi Nunes",
   robots: { index: false, follow: false },
+  // PWA — arquivo estático em public/, linkado SÓ aqui.
+  // (app/manifest.ts não serve: o Next injeta o <link rel="manifest"> em
+  //  todas as páginas, e o site público passaria a oferecer instalação.)
+  manifest: "/admin.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Painel MN",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0A192F",
 };
 
 // Sempre renderiza sob demanda (dados dinâmicos + sessão).
@@ -23,6 +37,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-cloud lg:grid lg:grid-cols-[260px_1fr]">
+      <RegisterSW />
       {/* Sidebar fixa em telas grandes */}
       <div className="hidden lg:block lg:h-screen lg:sticky lg:top-0">
         <AdminSidebar userName={session.user?.name} />

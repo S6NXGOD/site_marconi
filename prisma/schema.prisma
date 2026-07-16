@@ -108,3 +108,52 @@ enum LeadStatus {
   CONTACTED
   CLOSED
 }
+
+// Opções do float de WhatsApp (ex.: "Já sou cliente", "Quero ser cliente").
+model WhatsappContact {
+  id        String   @id @default(cuid())
+  title     String // "Já sou cliente"
+  subtitle  String // "Contato administrativo"
+  phone     String // só dígitos, com DDI: 5586999999999
+  message   String // mensagem já preenchida no WhatsApp
+  icon      String   @default("user") // chave do ícone (ver src/lib/icons.ts)
+  order     Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@index([isActive, order])
+}
+
+// Seção "Duas vertentes, uma excelência" — cada aba é uma vertente.
+model BusinessArea {
+  id          String   @id @default(cuid())
+  tabLabel    String // "MARCONI NUNES — SETOR PRIVADO"
+  eyebrow     String // "Marconi Nunes Contabilidade"
+  headline    String // "Solidez contábil para o setor privado"
+  description String
+  image       String? // foto 4:3 (upload no painel)
+  imageAlt    String   @default("")
+  ctaLabel    String   @default("Fale conosco")
+  ctaHref     String   @default("#contato")
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  services BusinessAreaService[]
+
+  @@index([isActive, order])
+}
+
+model BusinessAreaService {
+  id     String @id @default(cuid())
+  areaId String
+  name   String // "Área Fiscal e Tributária"
+  icon   String @default("chart") // chave do ícone
+  order  Int    @default(0)
+
+  area BusinessArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
+
+  @@index([areaId, order])
+}

@@ -13,6 +13,7 @@ import DeadlineFloat from "@/components/DeadlineFloat";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { prisma } from "@/lib/prisma";
 import { toEmbedUrl } from "@/lib/embed";
+import { getWhatsappContacts, getBusinessAreas } from "@/lib/content";
 
 // Renderiza a cada requisição — conteúdo do portal é dinâmico.
 export const dynamic = "force-dynamic";
@@ -93,7 +94,11 @@ async function getPortalData(): Promise<{
 }
 
 export default async function Home() {
-  const { news, alerts, approvals } = await getPortalData();
+  const [{ news, alerts, approvals }, whatsapp, areas] = await Promise.all([
+    getPortalData(),
+    getWhatsappContacts(),
+    getBusinessAreas(),
+  ]);
 
   return (
     <>
@@ -103,7 +108,7 @@ export default async function Home() {
         <NewsPortal news={news} alerts={alerts} />
 
         {/* Apresentação unificada das duas empresas */}
-        <BusinessAreas />
+        <BusinessAreas areas={areas} />
 
         {/* Sobre o fundador — logo após as áreas de atuação */}
         <FounderSection />
@@ -115,12 +120,12 @@ export default async function Home() {
         <ApprovalsShowcase items={approvals} />
 
         {/* Captação de leads (grava em CommercialLead) */}
-        <ContactForm />
+        <ContactForm whatsapp={whatsapp[0]?.phone} />
       </main>
 
       {/* Flutuantes: prazos (esquerda) e WhatsApp (direita) */}
       <DeadlineFloat alerts={alerts} />
-      <WhatsAppFloat />
+      <WhatsAppFloat contacts={whatsapp} />
 
       <Footer />
     </>

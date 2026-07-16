@@ -34,7 +34,10 @@ if (urlInvalida && process.env.RAILWAY_PUBLIC_DOMAIN) {
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
   session: { strategy: "jwt", maxAge: 60 * 60 * 8 }, // 8h
-  useSecureCookies: process.env.NODE_ENV === "production",
+  // `useSecureCookies` NÃO é forçado de propósito: o NextAuth já o deriva do
+  // protocolo do NEXTAUTH_URL (https -> cookie __Secure-, http -> comum).
+  // Fixá-lo em NODE_ENV quebrava o login, porque o cookie era gravado com o
+  // prefixo __Secure- enquanto o middleware o procurava pelo nome comum.
   pages: {
     signIn: "/login",
   },

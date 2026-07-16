@@ -26,6 +26,11 @@ export const metadata: Metadata = {
     template: "%s | Grupo Dr. Marconi Nunes",
   },
   applicationName: SITE_NAME,
+  icons: {
+    icon: [{ url: "/favicon.jpg", type: "image/jpeg" }],
+    shortcut: "/favicon.jpg",
+    apple: "/favicon.jpg",
+  },
   robots: IS_INDEXABLE
     ? { index: true, follow: true }
     : { index: false, follow: false }, // não indexa preview/dev

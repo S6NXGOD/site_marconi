@@ -8,6 +8,7 @@ import Footer from "@/components/Footer";
 import NewsCover from "@/components/NewsCover";
 import ShareButton from "@/components/ShareButton";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
+import { getWhatsappContacts } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -52,23 +53,26 @@ export default async function NoticiaPage({
   const news = await getNews(params.slug);
   if (!news) notFound();
 
-  const related = await prisma.news.findMany({
-    where: {
-      isPublished: true,
-      category: news.category,
-      NOT: { id: news.id },
-    },
-    orderBy: { createdAt: "desc" },
-    take: 3,
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      coverImage: true,
-      category: true,
-      createdAt: true,
-    },
-  });
+  const [related, whatsapp] = await Promise.all([
+    prisma.news.findMany({
+      where: {
+        isPublished: true,
+        category: news.category,
+        NOT: { id: news.id },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 3,
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        coverImage: true,
+        category: true,
+        createdAt: true,
+      },
+    }),
+    getWhatsappContacts(),
+  ]);
 
   // Conteúdo em texto simples -> parágrafos.
   const paragraphs = news.content
@@ -245,7 +249,7 @@ export default async function NoticiaPage({
         )}
       </main>
 
-      <WhatsAppFloat />
+      <WhatsAppFloat contacts={whatsapp} />
       <Footer />
     </>
   );

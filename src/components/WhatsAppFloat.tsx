@@ -4,45 +4,37 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
-import { CONTACTS, waLink } from "@/lib/contacts";
+import { Icon } from "@/lib/icons";
 
-// Os números vêm de src/lib/contacts.ts (fonte única).
-const OPTIONS = [
-  {
-    id: "cliente",
-    title: "Já sou cliente",
-    subtitle: "Contato administrativo",
-    phone: CONTACTS.administrativo.phone,
-    iconBg: "bg-indigo-50",
-    iconColor: "text-indigo-600",
-    icon: (
-      <>
-        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-        <circle cx="12" cy="7" r="4" />
-      </>
-    ),
-    message:
-      "Olá! Sou cliente do Grupo Dr. Marconi Nunes e preciso de atendimento administrativo.",
-  },
-  {
-    id: "comercial",
-    title: "Quero ser cliente",
-    subtitle: "Falar com comercial",
-    phone: CONTACTS.comercial.phone,
-    iconBg: "bg-amber-50",
-    iconColor: "text-marconi",
-    icon: (
-      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-    ),
-    message:
-      "Olá! Vim pelo site e gostaria de conhecer os serviços do Grupo Dr. Marconi Nunes.",
-  },
+export type WhatsappItem = {
+  id: string;
+  title: string;
+  subtitle: string;
+  phone: string;
+  message: string;
+  icon: string;
+};
+
+// Alterna a cor do ícone entre as opções, para não ficarem todas iguais.
+const ACCENTS = [
+  "bg-indigo-50 text-indigo-600",
+  "bg-amber-50 text-marconi",
+  "bg-emerald-50 text-emerald-600",
+  "bg-blue-50 text-conplan",
 ];
 
-// Atendente exibido na mensagem de boas-vindas (troque pelo nome real).
+function waLink(phone: string, message: string) {
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
+
+// Atendente exibido na mensagem de boas-vindas.
 const ATTENDANT = { name: "Recepção" };
 
-export default function WhatsAppFloat() {
+export default function WhatsAppFloat({
+  contacts,
+}: {
+  contacts: WhatsappItem[];
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -64,6 +56,10 @@ export default function WhatsAppFloat() {
       document.removeEventListener("mousedown", onClick);
     };
   }, [open]);
+
+  // Sem contato cadastrado o botão não aparece — melhor nenhum canal do que
+  // um canal que não leva a ninguém.
+  if (contacts.length === 0) return null;
 
   return (
     <div
@@ -135,7 +131,7 @@ export default function WhatsAppFloat() {
 
               {/* Opções */}
               <ul className="space-y-2.5 pt-1">
-                {OPTIONS.map((o) => (
+                {contacts.map((o, i) => (
                   <li key={o.id}>
                     <a
                       href={waLink(o.phone, o.message)}
@@ -145,20 +141,9 @@ export default function WhatsAppFloat() {
                       className="flex items-center gap-3 rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <span
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${o.iconBg} ${o.iconColor}`}
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${ACCENTS[i % ACCENTS.length]}`}
                       >
-                        <svg
-                          width="17"
-                          height="17"
-                          viewBox="0 0 24 24"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth="1.8"
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        >
-                          {o.icon}
-                        </svg>
+                        <Icon name={o.icon} size={17} strokeWidth={1.8} />
                       </span>
 
                       <span className="min-w-0">

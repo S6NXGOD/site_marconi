@@ -7,6 +7,7 @@ import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NewsCover from "@/components/NewsCover";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
+import { getWhatsappContacts } from "@/lib/content";
 
 export const dynamic = "force-dynamic";
 
@@ -44,20 +45,23 @@ export default async function NoticiasPage({
   const active = searchParams.cat && catMap[searchParams.cat] ? searchParams.cat : "todas";
   const category = catMap[active];
 
-  const news = await prisma.news.findMany({
-    where: { isPublished: true, ...(category ? { category } : {}) },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      title: true,
-      slug: true,
-      excerpt: true,
-      content: true,
-      coverImage: true,
-      category: true,
-      createdAt: true,
-    },
-  });
+  const [news, whatsapp] = await Promise.all([
+    prisma.news.findMany({
+      where: { isPublished: true, ...(category ? { category } : {}) },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        excerpt: true,
+        content: true,
+        coverImage: true,
+        category: true,
+        createdAt: true,
+      },
+    }),
+    getWhatsappContacts(),
+  ]);
 
   return (
     <>
@@ -157,7 +161,7 @@ export default async function NoticiasPage({
         </section>
       </main>
 
-      <WhatsAppFloat />
+      <WhatsAppFloat contacts={whatsapp} />
       <Footer />
     </>
   );

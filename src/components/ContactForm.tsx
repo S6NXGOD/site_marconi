@@ -4,7 +4,10 @@ import { useEffect, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { createCommercialLead, type LeadState } from "@/app/actions";
-import { CONTACTS, waLink } from "@/lib/contacts";
+
+function waLink(phone: string, message: string) {
+  return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
+}
 
 const initialState: LeadState = { status: "idle" };
 
@@ -43,9 +46,12 @@ const fieldClass =
 function SuccessPanel({
   state,
   onReset,
+  whatsapp,
 }: {
   state: LeadState;
   onReset: () => void;
+  /** telefone (só dígitos) do primeiro contato ativo — vem do painel */
+  whatsapp?: string;
 }) {
   return (
     <motion.div
@@ -114,22 +120,26 @@ function SuccessPanel({
         </div>
       )}
 
-      {/* Atalho: quem tem pressa fala agora */}
+      {/* Atalho: quem tem pressa fala agora.
+          O número vem do painel (primeiro contato ativo do WhatsApp);
+          sem contato cadastrado, o botão simplesmente não aparece. */}
       <div className="mt-8 flex w-full flex-col items-center gap-3 sm:w-auto">
-        <a
-          href={waLink(
-            CONTACTS.comercial.phone,
-            "Olá! Acabei de enviar um contato pelo site e gostaria de adiantar o atendimento."
-          )}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-[#1FB855] sm:w-auto"
-        >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.17 8.17 0 0 1-1.25-4.36c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.41a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23z" />
-          </svg>
-          Falar agora no WhatsApp
-        </a>
+        {whatsapp && (
+          <a
+            href={waLink(
+              whatsapp,
+              "Olá! Acabei de enviar um contato pelo site e gostaria de adiantar o atendimento."
+            )}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-[#1FB855] sm:w-auto"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.17 8.17 0 0 1-1.25-4.36c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.41a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23z" />
+            </svg>
+            Falar agora no WhatsApp
+          </a>
+        )}
 
         <button
           type="button"
@@ -143,7 +153,7 @@ function SuccessPanel({
   );
 }
 
-export default function ContactForm() {
+export default function ContactForm({ whatsapp }: { whatsapp?: string }) {
   const [state, formAction] = useFormState(createCommercialLead, initialState);
   const [showForm, setShowForm] = useState(true);
 
@@ -271,7 +281,11 @@ export default function ContactForm() {
                   <SubmitButton />
                 </motion.form>
               ) : (
-                <SuccessPanel state={state} onReset={() => setShowForm(true)} />
+                <SuccessPanel
+                  state={state}
+                  onReset={() => setShowForm(true)}
+                  whatsapp={whatsapp}
+                />
               )}
             </AnimatePresence>
           </div>

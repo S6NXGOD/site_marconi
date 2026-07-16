@@ -340,3 +340,196 @@ export async function toggleAlertActive(id: string, isActive: boolean) {
   await prisma.alert.update({ where: { id }, data: { isActive } });
   revalidateAll();
 }
+
+/* ───────────────────────── WHATSAPP (float) ───────────────────────── */
+
+export type WhatsappFormState = {
+  status: "idle" | "error";
+  message?: string;
+  errors?: Partial<Record<"title" | "subtitle" | "phone" | "message", string>>;
+};
+
+function parseWhatsappForm(formData: FormData) {
+  return {
+    title: String(formData.get("title") ?? "").trim(),
+    subtitle: String(formData.get("subtitle") ?? "").trim(),
+    // guarda só dígitos: o link do wa.me não aceita máscara
+    phone: String(formData.get("phone") ?? "").replace(/\D/g, ""),
+    message: String(formData.get("message") ?? "").trim(),
+    icon: String(formData.get("icon") ?? "user").trim() || "user",
+    order: Number(formData.get("order") ?? 0) || 0,
+    isActive: formData.get("isActive") === "on",
+  };
+}
+
+function validateWhatsapp(
+  d: ReturnType<typeof parseWhatsappForm>
+): WhatsappFormState | null {
+  const errors: WhatsappFormState["errors"] = {};
+  if (d.title.length < 2) errors.title = "Informe o título.";
+  if (d.subtitle.length < 2) errors.subtitle = "Informe a descrição.";
+  // 55 + DDD (2) + número (8 ou 9) = 12 ou 13 dígitos
+  if (d.phone.length < 12 || d.phone.length > 13)
+    errors.phone = "Use DDI + DDD + número (ex.: 5586999998888).";
+  if (!d.phone.startsWith("55"))
+    errors.phone = "O número deve começar com 55 (DDI do Brasil).";
+  if (d.message.length < 5) errors.message = "Informe a mensagem inicial.";
+  if (Object.keys(errors).length > 0)
+    return { status: "error", message: "Verifique os campos destacados.", errors };
+  return null;
+}
+
+export async function createWhatsapp(
+  _prev: WhatsappFormState,
+  formData: FormData
+): Promise<WhatsappFormState> {
+  await requireSession();
+  const data = parseWhatsappForm(formData);
+  const invalid = validateWhatsapp(data);
+  if (invalid) return invalid;
+
+  await prisma.whatsappContact.create({ data });
+  revalidatePath("/");
+  revalidatePath("/admin/whatsapp");
+  redirect("/admin/whatsapp?ok=created");
+}
+
+export async function updateWhatsapp(
+  id: string,
+  _prev: WhatsappFormState,
+  formData: FormData
+): Promise<WhatsappFormState> {
+  await requireSession();
+  const data = parseWhatsappForm(formData);
+  const invalid = validateWhatsapp(data);
+  if (invalid) return invalid;
+
+  await prisma.whatsappContact.update({ where: { id }, data });
+  revalidatePath("/");
+  revalidatePath("/admin/whatsapp");
+  redirect("/admin/whatsapp?ok=updated");
+}
+
+export async function deleteWhatsapp(id: string) {
+  await requireSession();
+  await prisma.whatsappContact.delete({ where: { id } });
+  revalidatePath("/");
+  revalidatePath("/admin/whatsapp");
+}
+
+export async function toggleWhatsappActive(id: string, isActive: boolean) {
+  await requireSession();
+  await prisma.whatsappContact.update({ where: { id }, data: { isActive } });
+  revalidatePath("/");
+  revalidatePath("/admin/whatsapp");
+}
+
+/* ───────────────────── ÁREAS DE ATUAÇÃO ───────────────────── */
+
+export type AreaFormState = {
+  status: "idle" | "error";
+  message?: string;
+  errors?: Partial<Record<"tabLabel" | "eyebrow" | "headline" | "description", string>>;
+};
+
+function parseAreaForm(formData: FormData) {
+  // Serviços chegam como listas paralelas (nome[i], ícone[i]).
+  const nomes = formData.getAll("serviceName").map((v) => String(v).trim());
+  const icones = formData.getAll("serviceIcon").map((v) => String(v).trim());
+
+  const services = nomes
+    .map((name, i) => ({ name, icon: icones[i] || "chart", order: i }))
+    .filter((s) => s.name.length > 0);
+
+  return {
+    tabLabel: String(formData.get("tabLabel") ?? "").trim(),
+    eyebrow: String(formData.get("eyebrow") ?? "").trim(),
+    headline: String(formData.get("headline") ?? "").trim(),
+    description: String(formData.get("description") ?? "").trim(),
+    image: String(formData.get("image") ?? "").trim(),
+    imageAlt: String(formData.get("imageAlt") ?? "").trim(),
+    ctaLabel: String(formData.get("ctaLabel") ?? "").trim() || "Fale conosco",
+    ctaHref: String(formData.get("ctaHref") ?? "").trim() || "#contato",
+    order: Number(formData.get("order") ?? 0) || 0,
+    isActive: formData.get("isActive") === "on",
+    services,
+  };
+}
+
+function validateArea(d: ReturnType<typeof parseAreaForm>): AreaFormState | null {
+  const errors: AreaFormState["errors"] = {};
+  if (d.tabLabel.length < 3) errors.tabLabel = "Informe o texto da aba.";
+  if (d.eyebrow.length < 2) errors.eyebrow = "Informe o nome da empresa.";
+  if (d.headline.length < 5) errors.headline = "Informe o título.";
+  if (d.description.length < 10) errors.description = "Descrição muito curta.";
+  if (Object.keys(errors).length > 0)
+    return { status: "error", message: "Verifique os campos destacados.", errors };
+  return null;
+}
+
+export async function createArea(
+  _prev: AreaFormState,
+  formData: FormData
+): Promise<AreaFormState> {
+  await requireSession();
+  const d = parseAreaForm(formData);
+  const invalid = validateArea(d);
+  if (invalid) return invalid;
+
+  const { services, ...area } = d;
+  await prisma.businessArea.create({
+    data: {
+      ...area,
+      image: area.image || null,
+      services: { create: services },
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath("/admin/areas");
+  redirect("/admin/areas?ok=created");
+}
+
+export async function updateArea(
+  id: string,
+  _prev: AreaFormState,
+  formData: FormData
+): Promise<AreaFormState> {
+  await requireSession();
+  const d = parseAreaForm(formData);
+  const invalid = validateArea(d);
+  if (invalid) return invalid;
+
+  const { services, ...area } = d;
+
+  // Recria os serviços: mais simples e previsível que casar item a item.
+  await prisma.$transaction([
+    prisma.businessAreaService.deleteMany({ where: { areaId: id } }),
+    prisma.businessArea.update({
+      where: { id },
+      data: {
+        ...area,
+        image: area.image || null,
+        services: { create: services },
+      },
+    }),
+  ]);
+
+  revalidatePath("/");
+  revalidatePath("/admin/areas");
+  redirect("/admin/areas?ok=updated");
+}
+
+export async function deleteArea(id: string) {
+  await requireSession();
+  await prisma.businessArea.delete({ where: { id } });
+  revalidatePath("/");
+  revalidatePath("/admin/areas");
+}
+
+export async function toggleAreaActive(id: string, isActive: boolean) {
+  await requireSession();
+  await prisma.businessArea.update({ where: { id }, data: { isActive } });
+  revalidatePath("/");
+  revalidatePath("/admin/areas");
+}
