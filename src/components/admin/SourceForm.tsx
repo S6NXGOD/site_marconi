@@ -88,10 +88,57 @@ export default function SourceForm({ action, initial, submitLabel }: Props) {
   const [previa, setPrevia] = useState<{ total: number; itens: Previa[] } | null>(null);
   const [erroTeste, setErroTeste] = useState<string | null>(null);
 
+  const [detectando, setDetectando] = useState(false);
+  const [erroDetectar, setErroDetectar] = useState<string | null>(null);
+  const [detectou, setDetectou] = useState<number | null>(null);
+
   function set<K extends keyof Campos>(k: K, v: Campos[K]) {
     setCampos((c) => ({ ...c, [k]: v }));
     setPrevia(null);
   }
+
+  /**
+   * Pede ao servidor para descobrir os seletores a partir da URL e preenche o
+   * formulário. Não salva nada — é ponto de partida, revisado no "Testar".
+   */
+  async function detectar() {
+    setDetectando(true);
+    setErroDetectar(null);
+    setDetectou(null);
+    setPrevia(null);
+    try {
+      const res = await fetch("/api/admin/scrape/detectar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: campos.url }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErroDetectar(data.error ?? "Não consegui detectar.");
+        return;
+      }
+      setCampos((c) => ({
+        ...c,
+        // O nome só é sugerido quando ainda está em branco — não sobrescreve o
+        // que a pessoa já escreveu.
+        name: c.name.trim() || data.nomeSugerido || c.name,
+        itemSelector: data.itemSelector ?? "",
+        titleSelector: data.titleSelector ?? "",
+        linkSelector: data.linkSelector ?? "",
+        dateSelector: data.dateSelector ?? "",
+        imageSelector: data.imageSelector ?? "",
+        excerptSelector: data.excerptSelector ?? "",
+        contentSelector: data.contentSelector ?? "",
+      }));
+      setDetectou(data.quantidade ?? 0);
+    } catch {
+      setErroDetectar("Não consegui contatar o servidor.");
+    } finally {
+      setDetectando(false);
+    }
+  }
+
+  const podeDetectar = /^https?:\/\/.+/i.test(campos.url) && !detectando;
 
   async function testar() {
     setTestando(true);
@@ -122,21 +169,6 @@ export default function SourceForm({ action, initial, submitLabel }: Props) {
           {state.message}
         </div>
       )}
-
-      {/* Atalho para a fonte mais provável. */}
-      <button
-        type="button"
-        onClick={() => {
-          setCampos(PRESET_TCE);
-          setPrevia(null);
-        }}
-        className="inline-flex items-center gap-2 rounded-full border border-marconi/40 bg-marconi/5 px-4 py-2 text-xs font-semibold text-marconi transition-colors hover:bg-marconi/10"
-      >
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
-        </svg>
-        Preencher com o TCE-PI
-      </button>
 
       <div>
         <label htmlFor="name" className="mb-1.5 block text-sm font-medium text-conplan">
@@ -174,6 +206,59 @@ export default function SourceForm({ action, initial, submitLabel }: Props) {
           A página que lista as notícias, não a de uma matéria.
         </p>
         {state.errors?.url && <p className="mt-1 text-xs text-red-600">{state.errors.url}</p>}
+
+        {/* ——— Detecção automática ———
+            Cola a URL, clica aqui, e os seletores abaixo se preenchem sozinhos.
+            É o caminho normal; mexer nos seletores à mão é para o raro caso de
+            o site ter um layout que foge do padrão. */}
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onClick={detectar}
+            disabled={!podeDetectar}
+            className="inline-flex items-center gap-2 rounded-full bg-conplan px-4 py-2 text-xs font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-conplan/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0"
+          >
+            {detectando ? (
+              <>
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                Lendo o site...
+              </>
+            ) : (
+              <>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" />
+                </svg>
+                Detectar seletores automaticamente
+              </>
+            )}
+          </button>
+
+          {/* Atalho para a fonte mais usada — dispensa até a detecção. */}
+          <button
+            type="button"
+            onClick={() => {
+              setCampos(PRESET_TCE);
+              setPrevia(null);
+              setDetectou(null);
+              setErroDetectar(null);
+            }}
+            className="text-xs font-medium text-slate-400 underline decoration-slate-300 underline-offset-2 transition-colors hover:text-marconi"
+          >
+            usar o TCE-PI
+          </button>
+        </div>
+
+        {erroDetectar && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+            {erroDetectar}
+          </p>
+        )}
+        {detectou !== null && !erroDetectar && (
+          <p className="mt-2 rounded-lg bg-emerald-50 px-3 py-2 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200">
+            {detectou} {detectou === 1 ? "notícia encontrada" : "notícias encontradas"}. Confira
+            os campos abaixo e use “Testar seletores” antes de salvar.
+          </p>
+        )}
       </div>
 
       <div>
