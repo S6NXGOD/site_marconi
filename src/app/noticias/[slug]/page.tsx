@@ -147,8 +147,14 @@ export default async function NoticiaPage({
   ]);
 
   // Conteúdo em texto simples -> parágrafos.
+  //
+  // O `\r?` não é decoração: o <textarea> do painel devolve CRLF na submissão
+  // (é a especificação do HTML), então uma notícia editada chega aqui com
+  // \r\n\r\n entre os parágrafos. Procurar dois \n grudados não casa — tem um
+  // \r no meio — e a matéria inteira virava um bloco único. A gravação agora
+  // normaliza, mas isto cobre o que já está gravado assim.
   const paragraphs = news.content
-    .split(/\n{2,}/)
+    .split(/\r?\n\s*\r?\n/)
     .map((p) => p.trim())
     .filter(Boolean);
 

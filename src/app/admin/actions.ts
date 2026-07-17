@@ -160,11 +160,24 @@ function dataDePublicacao(entrada: string, atual?: Date): Date {
   return dataDeInput(entrada) ?? atual ?? new Date();
 }
 
+/**
+ * Quebras de linha vindas de um <textarea>.
+ *
+ * O navegador normaliza o value para CRLF na submissão do formulário — é a
+ * especificação do HTML, não um capricho de um navegador. Sem desfazer isso,
+ * o texto chega ao banco com CR LF CR LF entre os parágrafos, e uma regex que
+ * procure dois LF grudados não casa: há um CR no meio. Foi o que fez a
+ * notícia editada no painel virar um bloco único no site.
+ */
+function normalizarQuebras(v: string): string {
+  return v.replace(/\r\n?/g, "\n");
+}
+
 function parseNewsForm(formData: FormData) {
   return {
     title: String(formData.get("title") ?? "").trim(),
-    excerpt: String(formData.get("excerpt") ?? "").trim(),
-    content: String(formData.get("content") ?? "").trim(),
+    excerpt: normalizarQuebras(String(formData.get("excerpt") ?? "")).trim(),
+    content: normalizarQuebras(String(formData.get("content") ?? "")).trim(),
     category: String(formData.get("category") ?? ""),
     coverImage: String(formData.get("coverImage") ?? "").trim(),
     slugInput: String(formData.get("slug") ?? "").trim(),
@@ -275,7 +288,7 @@ function parseAlertForm(formData: FormData) {
     title: String(formData.get("title") ?? "").trim(),
     date: String(formData.get("date") ?? "").trim(),
     category: String(formData.get("category") ?? ""),
-    description: String(formData.get("description") ?? "").trim(),
+    description: normalizarQuebras(String(formData.get("description") ?? "")).trim(),
     isActive: formData.get("isActive") === "on",
   };
 }
@@ -512,7 +525,7 @@ function parseAreaForm(formData: FormData) {
     tabLabel: String(formData.get("tabLabel") ?? "").trim(),
     eyebrow: String(formData.get("eyebrow") ?? "").trim(),
     headline: String(formData.get("headline") ?? "").trim(),
-    description: String(formData.get("description") ?? "").trim(),
+    description: normalizarQuebras(String(formData.get("description") ?? "")).trim(),
     image: String(formData.get("image") ?? "").trim(),
     imageAlt: String(formData.get("imageAlt") ?? "").trim(),
     accent: String(formData.get("accent") ?? "marconi") === "conplan" ? "conplan" : "marconi",
