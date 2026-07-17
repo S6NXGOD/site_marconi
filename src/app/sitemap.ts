@@ -19,7 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const noticias = await prisma.news.findMany({
       where: { isPublished: true },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       select: { slug: true, updatedAt: true },
       take: 1000,
     });

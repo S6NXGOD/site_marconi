@@ -40,7 +40,7 @@ async function getPortalData(): Promise<{
     const [news, alerts, approvals] = await Promise.all([
       prisma.news.findMany({
         where: { isPublished: true },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
         take: 9,
         select: {
           id: true,
@@ -50,7 +50,7 @@ async function getPortalData(): Promise<{
           content: true,
           coverImage: true,
           category: true,
-          createdAt: true,
+          publishedAt: true,
         },
       }),
       prisma.alert.findMany({

@@ -1,5 +1,7 @@
 "use client";
 
+import { formatarData } from "@/lib/datas";
+
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
@@ -16,7 +18,7 @@ export type NewsItem = {
   content: string;
   coverImage: string | null;
   category: NewsCategory;
-  createdAt: Date | string;
+  publishedAt: Date | string;
 };
 
 type Filter = "ALL" | NewsCategory;
@@ -27,15 +29,6 @@ const filters: { value: Filter; label: string }[] = [
   { value: "PRIVADO", label: "Setor Privado" },
   { value: "GERAL", label: "Geral" },
 ];
-
-function formatDate(value: Date | string) {
-  const date = typeof value === "string" ? new Date(value) : value;
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  }).format(date);
-}
 
 function summary(item: NewsItem) {
   return item.excerpt ?? item.content;
@@ -179,7 +172,7 @@ export default function NewsPortal({
                         {summary(featured)}
                       </p>
                       <time className="mt-3 block text-xs font-medium uppercase tracking-wider text-marconi-light">
-                        {formatDate(featured.createdAt)}
+                        {formatarData(featured.publishedAt)}
                       </time>
                     </div>
                   </div>
@@ -214,7 +207,7 @@ export default function NewsPortal({
                           {item.title}
                         </h3>
                         <time className="mt-2 block text-[11px] font-medium uppercase tracking-wider text-marconi-light">
-                          {formatDate(item.createdAt)}
+                          {formatarData(item.publishedAt)}
                         </time>
                       </div>
                     </div>
@@ -284,7 +277,7 @@ export default function NewsPortal({
                           {summary(item)}
                         </p>
                         <time className="mt-1.5 block text-xs text-slate-400">
-                          {formatDate(item.createdAt)}
+                          {formatarData(item.publishedAt)}
                         </time>
                       </div>
                     </Link>

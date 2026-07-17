@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { slugify, slugOtimizado } from "@/lib/slugify";
 import { autorDe } from "@/lib/news";
+import { dataDeInput, inputDeData } from "@/lib/datas";
 
 async function requireSession() {
   const session = await getServerSession(authOptions);
@@ -167,6 +168,18 @@ async function ensureUniqueSlug(base: string, ignoreId?: string): Promise<string
   }
 }
 
+/**
+ * Data editorial da notícia.
+ *
+ * Mantém o horário quando o dia não mudou: salvar uma correção de texto não
+ * pode reordenar a notícia na listagem. Dia diferente vira meio-dia, que é
+ * neutro em qualquer fuso.
+ */
+function dataDePublicacao(entrada: string, atual?: Date): Date {
+  if (atual && entrada && inputDeData(atual) === entrada) return atual;
+  return dataDeInput(entrada) ?? atual ?? new Date();
+}
+
 function parseNewsForm(formData: FormData) {
   return {
     title: String(formData.get("title") ?? "").trim(),
@@ -175,6 +188,7 @@ function parseNewsForm(formData: FormData) {
     category: String(formData.get("category") ?? ""),
     coverImage: String(formData.get("coverImage") ?? "").trim(),
     slugInput: String(formData.get("slug") ?? "").trim(),
+    publishedAt: String(formData.get("publishedAt") ?? "").trim(),
     isPublished: formData.get("isPublished") === "on",
   };
 }
@@ -209,6 +223,7 @@ export async function createNews(
       category: data.category as NewsCategory,
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,
+      publishedAt: dataDePublicacao(data.publishedAt),
     },
   });
 
@@ -226,6 +241,12 @@ export async function updateNews(
   const invalid = validateNews(data);
   if (invalid) return invalid;
 
+  // Precisa da data atual para preservar o horário quando só o texto mudou.
+  const atual = await prisma.news.findUnique({
+    where: { id },
+    select: { publishedAt: true },
+  });
+
   await prisma.news.update({
     where: { id },
     data: {
@@ -237,6 +258,7 @@ export async function updateNews(
       category: data.category as NewsCategory,
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,
+      publishedAt: dataDePublicacao(data.publishedAt, atual?.publishedAt),
     },
   });
 

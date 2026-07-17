@@ -40,10 +40,15 @@ model News {
   author      String? // ex.: "Redação Grupo Marconi Nunes"
   category    NewsCategory @default(GERAL)
   isPublished Boolean      @default(false)
+  /// Data editorial — é esta que o site exibe e ordena. Sai da data do dia,
+  /// mas pode ser ajustada no painel (matéria sobre um fato de ontem).
+  publishedAt DateTime     @default(now())
+  /// Quando a linha foi criada. Não muda e não aparece no site: é o registro
+  /// de quando a notícia entrou de fato, mesmo que a data editorial seja outra.
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now()) @updatedAt
 
-  @@index([isPublished, createdAt])
+  @@index([isPublished, publishedAt])
   @@index([category])
 }
 

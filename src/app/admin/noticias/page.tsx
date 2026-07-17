@@ -21,13 +21,13 @@ export default async function NoticiasAdminPage({
   searchParams: { ok?: string };
 }) {
   const news = await prisma.news.findMany({
-    orderBy: { createdAt: "desc" },
+    orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     select: {
       id: true,
       title: true,
       category: true,
       isPublished: true,
-      createdAt: true,
+      publishedAt: true,
     },
   });
 
@@ -93,7 +93,7 @@ export default async function NoticiasAdminPage({
                       {categoryLabels[n.category]}
                     </span>
                     <span className="text-xs text-slate-400">
-                      {dateFmt.format(n.createdAt)}
+                      {dateFmt.format(n.publishedAt)}
                     </span>
                   </div>
                 </div>

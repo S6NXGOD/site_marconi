@@ -10,14 +10,9 @@ import ShareButton from "@/components/ShareButton";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { getWhatsappContacts } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
+import { formatarData } from "@/lib/datas";
 
 export const dynamic = "force-dynamic";
-
-const dateFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-});
 
 async function getNews(slug: string) {
   return prisma.news.findFirst({
@@ -61,7 +56,7 @@ export async function generateMetadata({
       description: descricao,
       url,
       type: "article",
-      publishedTime: news.createdAt.toISOString(),
+      publishedTime: news.publishedAt.toISOString(),
       modifiedTime: news.updatedAt.toISOString(),
       authors: [autorDe(news.category)],
       siteName: "Grupo Dr. Marconi Nunes",
@@ -97,7 +92,7 @@ export default async function NoticiaPage({
         category: news.category,
         NOT: { id: news.id },
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: 3,
       select: {
         id: true,
@@ -105,7 +100,7 @@ export default async function NoticiaPage({
         slug: true,
         coverImage: true,
         category: true,
-        createdAt: true,
+        publishedAt: true,
       },
     }),
     getWhatsappContacts(),
@@ -177,7 +172,7 @@ export default async function NoticiaPage({
                     <rect x="3" y="5" width="18" height="16" rx="2" />
                     <path d="M16 3v4M8 3v4M3 11h18" />
                   </svg>
-                  {dateFmt.format(news.createdAt)}
+                  {formatarData(news.publishedAt)}
                 </span>
 
                 <span className="inline-flex items-center gap-2">
@@ -230,7 +225,7 @@ export default async function NoticiaPage({
               {/* Rodapé da matéria */}
               <div className="mt-12 flex flex-col gap-4 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-slate-500">
-                  Publicado em {dateFmt.format(news.createdAt)}
+                  Publicado em {formatarData(news.publishedAt)}
                   {` · ${autorDe(news.category)}`}
                 </p>
                 <Link
@@ -272,7 +267,7 @@ export default async function NoticiaPage({
                           {item.title}
                         </h3>
                         <time className="mt-1.5 block text-[11px] font-medium uppercase tracking-wider text-marconi-light">
-                          {dateFmt.format(item.createdAt)}
+                          {formatarData(item.publishedAt)}
                         </time>
                       </div>
                     </div>

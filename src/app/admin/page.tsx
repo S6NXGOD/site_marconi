@@ -31,14 +31,14 @@ async function getDashboardData() {
     activeAlerts,
   ] = await Promise.all([
     prisma.news.findMany({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       take: 5,
       select: {
         id: true,
         title: true,
         category: true,
         isPublished: true,
-        createdAt: true,
+        publishedAt: true,
       },
     }),
     prisma.news.count(),
@@ -162,7 +162,7 @@ export default async function AdminDashboard() {
                         {categoryLabels[n.category]}
                       </span>
                       <span className="text-xs text-slate-400">
-                        {dateFmt.format(n.createdAt)}
+                        {dateFmt.format(n.publishedAt)}
                       </span>
                     </div>
                   </div>

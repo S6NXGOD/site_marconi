@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { formatarData } from "@/lib/datas";
 import type { NewsCategory } from "@prisma/client";
 import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
 import Header from "@/components/Header";
@@ -16,12 +17,6 @@ export const metadata: Metadata = {
   description:
     "Todas as notícias do Grupo Dr. Marconi Nunes — gestão pública, setor privado e conteúdos gerais.",
 };
-
-const dateFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "long",
-  year: "numeric",
-});
 
 const tabs: { value: string; label: string }[] = [
   { value: "todas", label: "Todas" },
@@ -48,7 +43,7 @@ export default async function NoticiasPage({
   const [news, whatsapp] = await Promise.all([
     prisma.news.findMany({
       where: { isPublished: true, ...(category ? { category } : {}) },
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
         title: true,
@@ -57,7 +52,7 @@ export default async function NoticiasPage({
         content: true,
         coverImage: true,
         category: true,
-        createdAt: true,
+        publishedAt: true,
       },
     }),
     getWhatsappContacts(),
@@ -142,7 +137,7 @@ export default async function NoticiasPage({
                         </p>
                         <div className="mt-4 flex items-center justify-between">
                           <time className="text-xs text-slate-400">
-                            {dateFmt.format(item.createdAt)}
+                            {formatarData(item.publishedAt)}
                           </time>
                           <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-marconi">
                             Ler mais

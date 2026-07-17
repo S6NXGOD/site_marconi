@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import ImageCropUploader from "./ImageCropUploader";
+import PublishDateField from "./PublishDateField";
 import SlugField from "./SlugField";
 import { autorDe, categoryOptions } from "@/lib/news";
 import type { NewsFormState } from "@/app/admin/actions";
@@ -17,6 +18,8 @@ type NewsInitial = {
   coverImage: string | null;
   category: NewsCategory;
   isPublished: boolean;
+  /** "yyyy-mm-dd" no fuso do Piauí */
+  publishedAt: string;
 };
 
 type Props = {
@@ -116,6 +119,10 @@ export default function NewsForm({
             {autorDe(category)}
           </strong>
         </p>
+      </div>
+
+      <div className="grid gap-6 sm:grid-cols-2">
+        <PublishDateField name="publishedAt" defaultValue={initial?.publishedAt} />
       </div>
 
       <SlugField

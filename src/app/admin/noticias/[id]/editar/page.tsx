@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SITE_URL } from "@/lib/site";
+import { inputDeData } from "@/lib/datas";
 import { updateNews } from "@/app/admin/actions";
 import NewsForm from "@/components/admin/NewsForm";
 
@@ -45,6 +46,7 @@ export default async function EditarNoticiaPage({
             content: news.content,
             coverImage: news.coverImage,
             category: news.category,
+            publishedAt: inputDeData(news.publishedAt),
             isPublished: news.isPublished,
           }}
         />
