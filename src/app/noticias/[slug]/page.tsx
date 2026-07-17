@@ -259,6 +259,36 @@ export default async function NoticiaPage({
                 ))}
               </div>
 
+              {/* ——— Crédito da fonte ———
+                  Fica em campo próprio (sourceUrl/sourceName) e é montado aqui,
+                  em vez de ser HTML colado no fim do texto. Dois motivos: o
+                  `content` é renderizado escapado logo acima, então uma tag <p>
+                  gravada nele apareceria literal na tela; e como o texto vem de
+                  terceiros, interpretá-lo como HTML abriria XSS. De quebra, o
+                  crédito não some se alguém apagar demais ao editar. */}
+              {news.sourceUrl && (
+                <aside className="mt-10 rounded-2xl border border-slate-200 bg-cloud p-5">
+                  <p className="text-sm text-slate-600">
+                    <span className="font-semibold text-conplan">
+                      {news.sourceName ? `Fonte: ${news.sourceName}` : "Fonte"}
+                    </span>
+                    . Conteúdo publicado originalmente pela assessoria do órgão.
+                  </p>
+                  <a
+                    href={news.sourceUrl}
+                    target="_blank"
+                    // nofollow: é link de crédito, não recomendação editorial.
+                    rel="noopener noreferrer nofollow"
+                    className="mt-2 inline-flex items-center gap-1.5 break-all text-sm font-semibold text-marconi transition-colors hover:text-marconi-dark"
+                  >
+                    Ler a matéria completa na origem
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                      <path d="M7 17L17 7M9 7h8v8" />
+                    </svg>
+                  </a>
+                </aside>
+              )}
+
               {/* Rodapé da matéria */}
               <div className="mt-12 flex flex-col gap-4 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-slate-500">

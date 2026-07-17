@@ -40,6 +40,11 @@ model News {
   author      String? // ex.: "Redação Grupo Marconi Nunes"
   category    NewsCategory @default(GERAL)
   isPublished Boolean      @default(false)
+  /// Link da matéria original, quando a notícia veio de uma fonte externa.
+  /// É único: é ele que impede a mesma matéria de ser importada duas vezes.
+  sourceUrl   String?      @unique
+  /// Nome da fonte para o crédito (ex.: "TCE-PI").
+  sourceName  String?
   /// Data editorial — é esta que o site exibe e ordena. Sai da data do dia,
   /// mas pode ser ajustada no painel (matéria sobre um fato de ontem).
   publishedAt DateTime     @default(now())
@@ -164,4 +169,36 @@ model BusinessAreaService {
   area BusinessArea @relation(fields: [areaId], references: [id], onDelete: Cascade)
 
   @@index([areaId, order])
+}
+
+
+/// Fonte de raspagem: uma página de listagem de notícias e os seletores CSS
+/// que dizem onde estão os dados nela. Fica no banco, e não no código, para
+/// um site mudar de layout sem exigir deploy.
+model ScrapeSource {
+  id       String       @id @default(cuid())
+  name     String       /// ex.: "TCE-PI — Notícias"
+  url      String       /// página de listagem
+  category NewsCategory @default(PUBLICO) /// categoria das notícias importadas
+  isActive Boolean      @default(true)
+
+  // ——— Seletores da LISTAGEM ———
+  /// Container de cada notícia. Os demais seletores são buscados dentro dele.
+  itemSelector    String
+  titleSelector   String?
+  /// De onde sai o href. Vazio, procura o primeiro <a> do container.
+  linkSelector    String?
+  dateSelector    String?
+  imageSelector   String?
+  excerptSelector String?
+
+  // ——— Seletor da PÁGINA DA MATÉRIA ———
+  /// Corpo do texto. Sem ele, o rascunho nasce só com o resumo da listagem.
+  contentSelector String?
+
+  lastRunAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now()) @updatedAt
+
+  @@index([isActive])
 }

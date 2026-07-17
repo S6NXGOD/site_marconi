@@ -21,6 +21,28 @@ const links = [
     icon: <path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h5" />,
   },
   {
+    href: "/admin/importar",
+    label: "Buscar notícias",
+    exact: false,
+    icon: (
+      <>
+        <circle cx="11" cy="11" r="7" />
+        <path d="M20 20l-3.5-3.5" />
+      </>
+    ),
+  },
+  {
+    href: "/admin/fontes",
+    label: "Fontes",
+    exact: false,
+    icon: (
+      <>
+        <circle cx="12" cy="12" r="9" />
+        <path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z" />
+      </>
+    ),
+  },
+  {
     href: "/admin/alertas",
     label: "Alertas & Prazos",
     exact: false,

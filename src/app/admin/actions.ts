@@ -6,7 +6,7 @@ import { getServerSession } from "next-auth";
 import { NewsCategory, AlertCategory, LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { slugify, slugOtimizado } from "@/lib/slugify";
+import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
 import { autorDe } from "@/lib/news";
 import { dataDeInput, inputDeData } from "@/lib/datas";
 import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
@@ -149,27 +149,6 @@ function isNewsCategory(value: string): value is NewsCategory {
 }
 
 /**
- * Slug final da notícia.
- *
- * O que a pessoa digitou tem prioridade (só normalizado). Vazio, sai do
- * título já enxuto — sem stopwords e no limite de caracteres.
- */
-function slugDaNoticia(slugInput: string, title: string): string {
-  return slugInput ? slugify(slugInput) : slugOtimizado(title);
-}
-
-async function ensureUniqueSlug(base: string, ignoreId?: string): Promise<string> {
-  const root = slugify(base) || "noticia";
-  let slug = root;
-  let i = 2;
-  for (;;) {
-    const existing = await prisma.news.findUnique({ where: { slug } });
-    if (!existing || existing.id === ignoreId) return slug;
-    slug = `${root}-${i++}`;
-  }
-}
-
-/**
  * Data editorial da notícia.
  *
  * Mantém o horário quando o dia não mudou: salvar uma correção de texto não
@@ -217,7 +196,7 @@ export async function createNews(
   await prisma.news.create({
     data: {
       title: data.title,
-      slug: await ensureUniqueSlug(slugDaNoticia(data.slugInput, data.title)),
+      slug: await slugUnico(slugDaNoticia(data.slugInput, data.title)),
       excerpt: data.excerpt || null,
       content: data.content,
       author: autorDe(data.category as NewsCategory),
@@ -252,7 +231,7 @@ export async function updateNews(
     where: { id },
     data: {
       title: data.title,
-      slug: await ensureUniqueSlug(slugDaNoticia(data.slugInput, data.title), id),
+      slug: await slugUnico(slugDaNoticia(data.slugInput, data.title), id),
       excerpt: data.excerpt || null,
       content: data.content,
       author: autorDe(data.category as NewsCategory),
@@ -621,4 +600,99 @@ export async function toggleAreaActive(id: string, isActive: boolean) {
   await prisma.businessArea.update({ where: { id }, data: { isActive } });
   revalidatePath("/");
   revalidatePath("/admin/areas");
+}
+
+/* ─────────────────────── FONTES DE RASPAGEM ─────────────────────── */
+
+export type SourceFormState = {
+  status: "idle" | "error";
+  message?: string;
+  errors?: Partial<Record<"name" | "url" | "itemSelector" | "category", string>>;
+};
+
+function parseSourceForm(formData: FormData) {
+  const txt = (k: string) => String(formData.get(k) ?? "").trim();
+  return {
+    name: txt("name"),
+    url: txt("url"),
+    category: txt("category"),
+    itemSelector: txt("itemSelector"),
+    titleSelector: txt("titleSelector"),
+    linkSelector: txt("linkSelector"),
+    dateSelector: txt("dateSelector"),
+    imageSelector: txt("imageSelector"),
+    excerptSelector: txt("excerptSelector"),
+    contentSelector: txt("contentSelector"),
+    isActive: formData.get("isActive") === "on",
+  };
+}
+
+function validateSource(d: ReturnType<typeof parseSourceForm>): SourceFormState | null {
+  const errors: SourceFormState["errors"] = {};
+  if (d.name.length < 3) errors.name = "Informe um nome para a fonte.";
+  if (!/^https?:\/\/.+/i.test(d.url)) errors.url = "Informe a URL completa, com https://";
+  if (!d.itemSelector) errors.itemSelector = "O seletor dos itens é obrigatório.";
+  if (!isNewsCategory(d.category)) errors.category = "Selecione uma categoria.";
+  if (Object.keys(errors).length > 0) {
+    return { status: "error", message: "Verifique os campos destacados.", errors };
+  }
+  return null;
+}
+
+/** Campo de seletor vazio significa "não capturar", não string vazia. */
+function dadosDaFonte(d: ReturnType<typeof parseSourceForm>) {
+  return {
+    name: d.name,
+    url: d.url,
+    category: d.category as NewsCategory,
+    itemSelector: d.itemSelector,
+    titleSelector: d.titleSelector || null,
+    linkSelector: d.linkSelector || null,
+    dateSelector: d.dateSelector || null,
+    imageSelector: d.imageSelector || null,
+    excerptSelector: d.excerptSelector || null,
+    contentSelector: d.contentSelector || null,
+    isActive: d.isActive,
+  };
+}
+
+export async function createSource(
+  _prev: SourceFormState,
+  formData: FormData
+): Promise<SourceFormState> {
+  await requireSession();
+  const data = parseSourceForm(formData);
+  const invalid = validateSource(data);
+  if (invalid) return invalid;
+
+  await prisma.scrapeSource.create({ data: dadosDaFonte(data) });
+  revalidatePath("/admin/fontes");
+  redirect("/admin/fontes?ok=created");
+}
+
+export async function updateSource(
+  id: string,
+  _prev: SourceFormState,
+  formData: FormData
+): Promise<SourceFormState> {
+  await requireSession();
+  const data = parseSourceForm(formData);
+  const invalid = validateSource(data);
+  if (invalid) return invalid;
+
+  await prisma.scrapeSource.update({ where: { id }, data: dadosDaFonte(data) });
+  revalidatePath("/admin/fontes");
+  redirect("/admin/fontes?ok=updated");
+}
+
+export async function deleteSource(id: string) {
+  await requireSession();
+  await prisma.scrapeSource.delete({ where: { id } });
+  revalidatePath("/admin/fontes");
+}
+
+export async function toggleSourceActive(id: string, isActive: boolean) {
+  await requireSession();
+  await prisma.scrapeSource.update({ where: { id }, data: { isActive } });
+  revalidatePath("/admin/fontes");
 }
