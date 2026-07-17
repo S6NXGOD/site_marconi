@@ -1,7 +1,7 @@
 "use client";
 
 import { formatarData } from "@/lib/datas";
-import { semMarcacao } from "@/lib/texto-rico";
+import { resumoExibicao } from "@/lib/resumo";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -33,8 +33,8 @@ const filters: { value: Filter; label: string }[] = [
 ];
 
 function summary(item: NewsItem) {
-  // Marcação de link não faz sentido no card e apareceria crua.
-  return semMarcacao(item.excerpt ?? item.content);
+  // Frase completa; resumo cru com "…" cede lugar ao corpo (ver resumoExibicao).
+  return resumoExibicao(item.excerpt, item.content, 180);
 }
 
 function Badge({ category }: { category: NewsCategory }) {

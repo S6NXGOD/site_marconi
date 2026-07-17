@@ -12,19 +12,35 @@
  * não é redundância: é o que garante que ele seja lido por inteiro.
  */
 
-/** Chamada institucional fixa, no fim de toda notícia compartilhada. */
+/**
+ * Chamada para o portal, em NEGRITO (o *asterisco* é o negrito do WhatsApp).
+ * É o convite para ler o resto — vem logo antes do link.
+ */
 export const CHAMADA_COMPARTILHAMENTO =
-  "Confira a matéria completa no maior portal de contabilidade do Piauí, " +
-  "Organização Contábil Grupo Dr. Marconi Nunes.";
+  "*Confira a matéria completa no maior portal de contabilidade do Piauí — " +
+  "Grupo Dr. Marconi Nunes:*";
 
 /**
- * O WhatsApp usa *asterisco* para negrito. Um asterisco solto no título
- * abriria uma marcação que nunca fecha e embaralharia o resto da mensagem.
+ * Tira a formatação do WhatsApp de um trecho que vai DENTRO de outra marcação.
+ * Um asterisco solto no título abriria um negrito que nunca fecha e
+ * embaralharia o resto da mensagem.
  */
-function semMarcacao(texto: string): string {
+function semFormatacao(texto: string): string {
   return texto.replace(/[*_~`]/g, "").trim();
 }
 
+/**
+ * Monta a mensagem que acompanha o link no WhatsApp:
+ *
+ *   *Título*
+ *   Resumo completo (uma frase inteira, nunca cortada no meio).
+ *   *Confira a matéria completa no portal:*
+ *   link
+ *
+ * O resumo já chega completo de `resumoExibicao`; aqui só se garante que ele
+ * não quebre a formatação. O card (imagem + descrição) é montado pelo próprio
+ * WhatsApp a partir do link — por isso ele fica por último.
+ */
 export function mensagemDaNoticia({
   title,
   summary,
@@ -34,14 +50,12 @@ export function mensagemDaNoticia({
   summary?: string | null;
   url: string;
 }): string {
-  const partes = [`*${semMarcacao(title)}*`];
+  const partes = [`*${semFormatacao(title)}*`];
 
   const resumo = summary?.trim();
-  if (resumo) partes.push(semMarcacao(resumo));
+  if (resumo) partes.push(semFormatacao(resumo));
 
   partes.push(CHAMADA_COMPARTILHAMENTO);
-  // O link fica por último: é de onde o WhatsApp monta o card, que aparece
-  // logo abaixo da mensagem.
   partes.push(url);
 
   return partes.join("\n\n");

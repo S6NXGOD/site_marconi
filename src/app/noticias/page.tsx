@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { formatarData } from "@/lib/datas";
-import { semMarcacao } from "@/lib/texto-rico";
+import { resumoExibicao } from "@/lib/resumo";
 import type { NewsCategory } from "@prisma/client";
 import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
 import Header from "@/components/Header";
@@ -214,7 +214,7 @@ export default async function NoticiasPage({
                           {item.title}
                         </h2>
                         <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-slate-600">
-                          {semMarcacao(item.excerpt ?? item.content)}
+                          {resumoExibicao(item.excerpt, item.content, 180)}
                         </p>
                         <div className="mt-4 flex items-center justify-between">
                           <time className="text-xs text-slate-400">

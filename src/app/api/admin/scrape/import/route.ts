@@ -12,7 +12,7 @@ import { buscarConteudo, parseDataRaspada } from "@/lib/scraper";
 import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
 import { dataDeInput } from "@/lib/datas";
 import { autorDe } from "@/lib/news";
-import { semMarcacao } from "@/lib/texto-rico";
+import { resumoInteligente } from "@/lib/resumo";
 
 export const runtime = "nodejs";
 // Cada item baixa a página da matéria e a imagem. Com vários selecionados,
@@ -62,15 +62,15 @@ async function baixarCapa(url: string): Promise<string | null> {
   }
 }
 
-/** Resumo curto para o card, a partir do que houver. */
-function resumoDe(excerpt: string, conteudo: string): string | null {
-  // O "[...]" que os temas WordPress cravam no fim do resumo não faz sentido
-  // fora da listagem de origem.
-  // O "[...]" que os temas WordPress cravam no fim do resumo não faz sentido
-  // fora da listagem; a marcação de link também não, no resumo.
-  const base = semMarcacao(excerpt || conteudo).replace(/\s*\[[^\]]*\]\s*$/, "").trim();
-  if (!base) return null;
-  return base.length > 220 ? `${base.slice(0, 217)}…` : base;
+/**
+ * Resumo curto para o card e o preview, gerado do corpo da matéria.
+ *
+ * Do corpo, e não do resumo da listagem: o resumo do WordPress vem picotado
+ * ("[...]"). `resumoInteligente` entrega uma frase inteira, não um corte cru
+ * que para no meio de uma palavra e ainda repete o começo da matéria.
+ */
+function resumoDaMateria(conteudo: string): string | null {
+  return resumoInteligente(conteudo, 240) || null;
 }
 
 export async function POST(request: Request) {
@@ -156,7 +156,7 @@ export async function POST(request: Request) {
           // resolve colisão. Sem isto, o título inteiro do órgão vira slug —
           // saíam endereços de 114 caracteres.
           slug: await slugUnico(slugDaNoticia("", title)),
-          excerpt: resumoDe(excerpt, corpo),
+          excerpt: resumoDaMateria(corpo),
           content: corpo,
           coverImage: capa,
           category: fonte.category,

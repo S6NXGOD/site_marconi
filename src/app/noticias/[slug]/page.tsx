@@ -17,7 +17,8 @@ import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { getWhatsappContacts } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 import { formatarData } from "@/lib/datas";
-import { comLinks, semMarcacao } from "@/lib/texto-rico";
+import { comLinks } from "@/lib/texto-rico";
+import { resumoExibicao, resumoRepeteCorpo } from "@/lib/resumo";
 
 export const dynamic = "force-dynamic";
 
@@ -74,12 +75,14 @@ async function getRelacionadas(id: string, category: NewsCategory) {
   return [...mesmoSegmento, ...completar];
 }
 
-/** Resumo curto para o preview; cai no início do texto se não houver excerpt. */
+/**
+ * Resumo do preview (WhatsApp, Google) e do texto compartilhado.
+ *
+ * Frase completa, nunca cortada no meio da palavra. Resumo com "…" (o corte
+ * cru antigo) é descartado em favor do corpo — ver `resumoExibicao`.
+ */
 function resumoDe(news: { excerpt: string | null; content: string }) {
-  const bruto = news.excerpt?.trim() || news.content;
-  // Sem isto o preview do WhatsApp mostraria "[texto](url)" literal.
-  const base = semMarcacao(bruto).replace(/\s+/g, " ").trim();
-  return base.length > 160 ? `${base.slice(0, 157)}…` : base;
+  return resumoExibicao(news.excerpt, news.content, 220);
 }
 
 /**
@@ -206,7 +209,11 @@ export default async function NoticiaPage({
                 {news.title}
               </h1>
 
-              {news.excerpt && (
+              {/* O resumo só entra aqui quando é um chamariz de verdade. Numa
+                  notícia importada ele sai do próprio corpo, e repeti-lo logo
+                  acima do primeiro parágrafo seria ler a mesma coisa duas
+                  vezes — então some. */}
+              {news.excerpt && !resumoRepeteCorpo(news.excerpt, news.content) && (
                 <p className="mt-4 max-w-2xl text-base leading-relaxed text-white/75 sm:text-lg">
                   {news.excerpt}
                 </p>
