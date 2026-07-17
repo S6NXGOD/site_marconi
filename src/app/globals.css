@@ -75,6 +75,16 @@
     @apply mx-auto w-full max-w-7xl px-6 lg:px-8;
   }
 
+  /* Trilho de carrossel: a barra de rolagem some, mas o scroll continua —
+     é gesto no celular e setas no desktop. */
+  .carrossel {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  .carrossel::-webkit-scrollbar {
+    display: none;
+  }
+
   /* Rótulo de seção (kicker) */
   .kicker {
     @apply inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em];

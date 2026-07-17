@@ -1,21 +1,30 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { formatarDataCurta } from "@/lib/datas";
 import { alertCategoryLabels, alertCategoryBadgeClasses, deadlineLabel } from "@/lib/news";
 import {
   DeleteAlertButton,
   ToggleAlertActiveButton,
 } from "@/components/admin/AlertRowActions";
 
-const dateFmt = new Intl.DateTimeFormat("pt-BR", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-});
-
 const okMessages: Record<string, string> = {
   created: "Alerta criado com sucesso.",
   updated: "Alerta atualizado com sucesso.",
 };
+
+/** Mensagem da importação — precisa dos números, então não cabe no mapa acima. */
+function mensagemImportacao(n: string | undefined, ign: string | undefined): string {
+  const criados = Number(n ?? 0);
+  const ignorados = Number(ign ?? 0);
+  const base =
+    criados === 0
+      ? "Nenhum alerta novo — todos já estavam cadastrados."
+      : `${criados} ${criados === 1 ? "alerta importado" : "alertas importados"} com sucesso.`;
+  if (criados > 0 && ignorados > 0) {
+    return `${base} ${ignorados} ${ignorados === 1 ? "linha ignorada" : "linhas ignoradas"} (repetida ou com erro).`;
+  }
+  return base;
+}
 
 const toneClasses = {
   danger: "text-red-600",
@@ -26,10 +35,15 @@ const toneClasses = {
 export default async function AlertasAdminPage({
   searchParams,
 }: {
-  searchParams: { ok?: string };
+  searchParams: { ok?: string; n?: string; ign?: string };
 }) {
   const alerts = await prisma.alert.findMany({ orderBy: { date: "asc" } });
-  const okMessage = searchParams.ok ? okMessages[searchParams.ok] : undefined;
+  const okMessage =
+    searchParams.ok === "imported"
+      ? mensagemImportacao(searchParams.n, searchParams.ign)
+      : searchParams.ok
+        ? okMessages[searchParams.ok]
+        : undefined;
 
   return (
     <div className="space-y-6">
@@ -40,15 +54,26 @@ export default async function AlertasAdminPage({
             Gerencie os prazos exibidos no portal para prefeituras e empresas.
           </p>
         </div>
-        <Link
-          href="/admin/alertas/novo"
-          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-marconi px-5 text-sm font-semibold text-white shadow-gold transition-all hover:-translate-y-0.5 hover:bg-marconi-dark sm:w-auto"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-          </svg>
-          Novo alerta
-        </Link>
+        <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
+          <Link
+            href="/admin/alertas/importar"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-300 px-5 text-sm font-semibold text-conplan transition-colors hover:border-marconi hover:text-marconi sm:w-auto"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
+            </svg>
+            Importar CSV
+          </Link>
+          <Link
+            href="/admin/alertas/novo"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-marconi px-5 text-sm font-semibold text-white shadow-gold transition-all hover:-translate-y-0.5 hover:bg-marconi-dark sm:w-auto"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M12 5v14M5 12h14" strokeLinecap="round" />
+            </svg>
+            Novo alerta
+          </Link>
+        </div>
       </header>
 
       {okMessage && (
@@ -89,7 +114,7 @@ export default async function AlertasAdminPage({
                           {alertCategoryLabels[a.category]}
                         </span>
                         <span className="text-xs text-slate-500">
-                          {dateFmt.format(a.date)}
+                          {formatarDataCurta(a.date)}
                         </span>
                         <span className={`text-xs font-semibold ${toneClasses[deadline.tone]}`}>
                           {deadline.text}

@@ -1,4 +1,5 @@
 import type { NewsCategory, AlertCategory } from "@prisma/client";
+import { diasAte, inputDeData } from "./datas";
 
 // ————— Notícias —————
 export const categoryLabels: Record<NewsCategory, string> = {
@@ -70,20 +71,11 @@ export const alertCategoryOptions: { value: AlertCategory; label: string }[] = [
   { value: "PRIVADO", label: "Setor Privado" },
 ];
 
-/** Dias restantes até a data limite (negativo = vencido). */
-function daysUntil(date: Date | string): number {
-  const target = typeof date === "string" ? new Date(date) : date;
-  const today = new Date();
-  const a = Date.UTC(today.getFullYear(), today.getMonth(), today.getDate());
-  const b = Date.UTC(target.getFullYear(), target.getMonth(), target.getDate());
-  return Math.round((b - a) / 86_400_000);
-}
-
 /** Um prazo é "da semana" quando vence em até 7 dias (e ainda não venceu). */
 const URGENT_DAYS = 7;
 
 export function isUrgent(date: Date | string): boolean {
-  const d = daysUntil(date);
+  const d = diasAte(date);
   return d >= 0 && d <= URGENT_DAYS;
 }
 
@@ -98,7 +90,7 @@ export function deadlineLabel(date: Date | string): {
   tone: DeadlineTone;
   days: number;
 } {
-  const days = daysUntil(date);
+  const days = diasAte(date);
 
   if (days < 0) return { text: "Encerrado", tone: "neutral", days };
   if (days === 0) return { text: "Vence hoje", tone: "danger", days };
@@ -122,7 +114,7 @@ export function groupByDay<T extends { date: Date | string }>(
 
   for (const item of items) {
     const date = typeof item.date === "string" ? new Date(item.date) : item.date;
-    const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+    const key = inputDeData(date); // dia no Piauí, igual no servidor e no cliente
 
     const existing = groups.get(key);
     if (existing) existing.items.push(item);

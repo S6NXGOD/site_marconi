@@ -12,18 +12,12 @@ import Footer from "@/components/Footer";
 import DeadlineFloat from "@/components/DeadlineFloat";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { prisma } from "@/lib/prisma";
+import { inicioDeHoje } from "@/lib/datas";
 import { toEmbedUrl } from "@/lib/embed";
 import { getWhatsappContacts, getBusinessAreas } from "@/lib/content";
 
 // Renderiza a cada requisição — conteúdo do portal é dinâmico.
 export const dynamic = "force-dynamic";
-
-/** Meia-noite de hoje — prazos que vencem hoje ainda contam. */
-function startOfToday() {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
 
 /**
  * Conteúdo do portal.
@@ -55,7 +49,7 @@ async function getPortalData(): Promise<{
       }),
       prisma.alert.findMany({
         // Só prazos ativos e ainda não vencidos (inclui os que vencem hoje).
-        where: { isActive: true, date: { gte: startOfToday() } },
+        where: { isActive: true, date: { gte: inicioDeHoje() } },
         orderBy: { date: "asc" },
         take: 12,
         select: {

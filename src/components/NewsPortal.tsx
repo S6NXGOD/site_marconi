@@ -8,6 +8,7 @@ import { motion } from "framer-motion";
 import type { NewsCategory } from "@prisma/client";
 import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
 import NewsCover from "./NewsCover";
+import NewsCarousel from "./NewsCarousel";
 import AlertsPanel, { type AlertItem } from "./AlertsPanel";
 
 export type NewsItem = {
@@ -60,7 +61,8 @@ export default function NewsPortal({
 
   const featured = visible[0];
   const side = visible.slice(1, 3);
-  const latest = visible.slice(3, 9);
+  // Tudo que sobrou dos destaques — o carrossel rola, não precisa cortar em 6.
+  const latest = visible.slice(3);
 
   // Site sem nenhuma notícia publicada (ex.: recém no ar). Nesse caso os
   // filtros não fazem sentido e a seção "Mais notícias" some — nada de
@@ -148,8 +150,12 @@ export default function NewsPortal({
                 transition={{ duration: 0.5 }}
                 className="group relative overflow-hidden rounded-2xl lg:col-span-2 lg:row-span-2"
               >
-                <Link href={`/noticias/${featured.slug}`} className="block">
-                  <div className="relative aspect-[4/3] w-full sm:aspect-[16/10] lg:aspect-[16/11]">
+                <Link href={`/noticias/${featured.slug}`} className="block h-full">
+                  {/* overflow-hidden aqui, e não só no article: no hover a foto
+                      cresce 105% e precisa ser cortada na MESMA caixa que o
+                      gradiente cobre. Sem isso ela vaza e aparece um trecho de
+                      imagem sem o fade. */}
+                  <div className="relative aspect-[4/3] w-full overflow-hidden sm:aspect-[16/10] lg:aspect-[16/11]">
                     <NewsCover
                       src={featured.coverImage}
                       alt={featured.title}
@@ -188,8 +194,14 @@ export default function NewsPortal({
                   transition={{ duration: 0.5, delay: 0.08 * (i + 1) }}
                   className="group relative overflow-hidden rounded-2xl"
                 >
-                  <Link href={`/noticias/${item.slug}`} className="block">
-                    <div className="relative aspect-[16/10] w-full lg:aspect-[16/9]">
+                  <Link href={`/noticias/${item.slug}`} className="block h-full">
+                    {/* No lg estes cards preenchem a altura da linha do grid
+                        (`h-full`) em vez de manter proporção fixa. A proporção
+                        deixava uma sobra transparente no fim do card — invisível
+                        parada, mas era por ali que a foto ampliada no hover
+                        escapava, sem gradiente por cima. De quebra, agora o
+                        conjunto fecha alinhado com a manchete ao lado. */}
+                    <div className="relative aspect-[16/10] w-full overflow-hidden lg:aspect-auto lg:h-full">
                       <NewsCover
                         src={item.coverImage}
                         alt={item.title}
@@ -228,64 +240,8 @@ export default function NewsPortal({
             latest.length > 0 ? "lg:grid-cols-[1fr_360px]" : "lg:max-w-3xl"
           }`}
         >
-          {/* Lista */}
-          {latest.length > 0 && (
-            <div>
-              <div className="flex items-end justify-between gap-4 border-b border-slate-200 pb-4">
-                <h2 className="font-serif text-2xl font-semibold text-conplan sm:text-3xl">
-                  Mais notícias
-                </h2>
-                <Link
-                  href="/noticias"
-                  className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-marconi transition-colors hover:text-marconi-dark"
-                >
-                  Ver todas
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </Link>
-              </div>
-
-              <ul className="mt-6 divide-y divide-slate-200">
-                {latest.map((item, i) => (
-                  <motion.li
-                    key={item.id}
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true, margin: "-40px" }}
-                    transition={{ duration: 0.4, delay: i * 0.05 }}
-                  >
-                    <Link
-                      href={`/noticias/${item.slug}`}
-                      className="group flex gap-4 py-5 sm:gap-5"
-                    >
-                      <div className="relative h-20 w-28 shrink-0 overflow-hidden rounded-xl sm:h-24 sm:w-36">
-                        <NewsCover
-                          src={item.coverImage}
-                          alt={item.title}
-                          category={item.category}
-                          sizes="144px"
-                        />
-                      </div>
-
-                      <div className="min-w-0 flex-1">
-                        <Badge category={item.category} />
-                        <h3 className="mt-1.5 line-clamp-2 text-sm font-semibold leading-snug text-conplan transition-colors group-hover:text-marconi sm:text-base">
-                          {item.title}
-                        </h3>
-                        <p className="mt-1 line-clamp-2 hidden text-sm text-slate-500 sm:block">
-                          {summary(item)}
-                        </p>
-                        <time className="mt-1.5 block text-xs text-slate-400">
-                          {formatarData(item.publishedAt)}
-                        </time>
-                      </div>
-                    </Link>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-          )}
+          {/* Carrossel — os itens já entram sem os destaques acima. */}
+          {latest.length > 0 && <NewsCarousel items={latest} />}
 
           {/* Alertas */}
           <AlertsPanel alerts={alerts} />

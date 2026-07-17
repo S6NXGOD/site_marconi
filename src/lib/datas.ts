@@ -77,3 +77,42 @@ export function dataDeInput(iso: string): Date | null {
 export function ehHoje(value: Date | string): boolean {
   return inputDeData(value) === hojeISO();
 }
+
+/**
+ * Dias inteiros entre hoje e a data (negativo = passou).
+ *
+ * Conta dias de CALENDÁRIO no Piauí, não diferença de milissegundos: o que
+ * importa num prazo é a virada do dia, não 24h corridas. Normalizar os dois
+ * lados para o dia no Piauí também mantém o resultado igual no servidor e no
+ * navegador — a conta acontece nos dois.
+ */
+export function diasAte(value: Date | string): number {
+  const hoje = Date.parse(`${hojeISO()}T00:00:00Z`);
+  const alvo = Date.parse(`${inputDeData(value)}T00:00:00Z`);
+  return Math.round((alvo - hoje) / 86_400_000);
+}
+
+/**
+ * Corte para "prazos que ainda valem", incluindo os que vencem hoje.
+ *
+ * Toda data editorial é gravada ao meio-dia UTC, então comparar com o meio-dia
+ * de hoje separa exatamente hoje-em-diante de ontem-para-trás — sem precisar
+ * de aritmética de fuso. Um `new Date()` com hora zerada erraria: às 22h em
+ * Teresina o servidor em UTC já está no dia seguinte e sumiria com o prazo que
+ * vence hoje.
+ */
+export function inicioDeHoje(): Date {
+  return dataDeInput(hojeISO()) ?? new Date();
+}
+
+/** "seg., 20 de jul." — usado nos cards de prazo. */
+const fmtDia = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "short",
+  day: "2-digit",
+  month: "short",
+  timeZone: FUSO,
+});
+
+export function formatarDiaPrazo(value: Date | string): string {
+  return fmtDia.format(asDate(value));
+}

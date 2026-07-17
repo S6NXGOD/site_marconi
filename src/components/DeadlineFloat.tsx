@@ -1,5 +1,7 @@
 "use client";
 
+import { formatarDiaPrazo } from "@/lib/datas";
+
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -16,11 +18,6 @@ import ExpandableText from "./ExpandableText";
 // É o que impede o aviso de reabrir a cada visita.
 const STORAGE_KEY = "mn:prazos-vistos";
 
-const dayFmt = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "short",
-  day: "2-digit",
-  month: "short",
-});
 
 const toneChip = {
   danger: "bg-red-50 text-red-700 ring-red-200",
@@ -161,7 +158,7 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
                         {text}
                       </span>
                       <time className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
-                        {dayFmt.format(group.date)}
+                        {formatarDiaPrazo(group.date)}
                       </time>
                       {group.items.length > 1 && (
                         <span className="rounded-full bg-conplan-soft px-1.5 py-0.5 text-[10px] font-semibold text-conplan">

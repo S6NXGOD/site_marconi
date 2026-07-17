@@ -9,6 +9,7 @@ import { prisma } from "@/lib/prisma";
 import { slugify, slugOtimizado } from "@/lib/slugify";
 import { autorDe } from "@/lib/news";
 import { dataDeInput, inputDeData } from "@/lib/datas";
+import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
 
 async function requireSession() {
   const session = await getServerSession(authOptions);
@@ -303,8 +304,7 @@ function parseAlertForm(formData: FormData) {
 function validateAlert(data: ReturnType<typeof parseAlertForm>): AlertFormState | null {
   const errors: AlertFormState["errors"] = {};
   if (data.title.length < 4) errors.title = "Informe um título (mín. 4 caracteres).";
-  if (!data.date || Number.isNaN(new Date(data.date).getTime()))
-    errors.date = "Informe uma data limite válida.";
+  if (!dataDeInput(data.date)) errors.date = "Informe uma data limite válida.";
   if (!isAlertCategory(data.category)) errors.category = "Selecione uma categoria.";
   if (data.description.length < 10) errors.description = "A descrição está muito curta.";
   if (Object.keys(errors).length > 0) {
@@ -325,7 +325,7 @@ export async function createAlert(
   await prisma.alert.create({
     data: {
       title: data.title,
-      date: new Date(data.date),
+      date: dataDeInput(data.date) ?? new Date(),
       category: data.category as AlertCategory,
       description: data.description,
       isActive: data.isActive,
@@ -350,7 +350,7 @@ export async function updateAlert(
     where: { id },
     data: {
       title: data.title,
-      date: new Date(data.date),
+      date: dataDeInput(data.date) ?? new Date(),
       category: data.category as AlertCategory,
       description: data.description,
       isActive: data.isActive,
@@ -359,6 +359,62 @@ export async function updateAlert(
 
   revalidateAll();
   redirect("/admin/alertas?ok=updated");
+}
+
+export type ImportAlertsState = {
+  status: "idle" | "error";
+  message?: string;
+};
+
+/**
+ * Importa alertas em massa a partir do texto do CSV.
+ *
+ * Recebe o arquivo cru, e não as linhas já validadas pelo painel: a prévia é
+ * conveniência, não autoridade. Quem valida é o servidor, com o mesmo
+ * `lerAlertasCSV` que gerou a prévia.
+ */
+export async function importAlerts(
+  _prev: ImportAlertsState,
+  formData: FormData
+): Promise<ImportAlertsState> {
+  await requireSession();
+
+  const texto = String(formData.get("csv") ?? "");
+  if (!texto.trim()) {
+    return { status: "error", message: "Nenhum conteúdo para importar." };
+  }
+
+  const linhas = lerAlertasCSV(texto);
+  const validas = linhas.filter((l) => !l.erro && l.category);
+  if (validas.length === 0) {
+    return {
+      status: "error",
+      message: "Nenhuma linha válida no arquivo. Revise os erros apontados na prévia.",
+    };
+  }
+
+  const existentes = await prisma.alert.findMany({ select: { title: true, date: true } });
+  const { novos } = filtrarNovos(
+    linhas,
+    existentes.map((a) => ({ title: a.title, dia: inputDeData(a.date) }))
+  );
+
+  if (novos.length > 0) {
+    await prisma.alert.createMany({
+      data: novos.map((n) => ({
+        title: n.title,
+        // Meio-dia: a data do prazo não pode escorregar um dia por causa de fuso.
+        date: dataDeInput(n.date) as Date,
+        category: n.category,
+        description: n.description,
+        isActive: n.isActive,
+      })),
+    });
+  }
+
+  const ignorados = linhas.length - novos.length;
+  revalidateAll();
+  redirect(`/admin/alertas?ok=imported&n=${novos.length}&ign=${ignorados}`);
 }
 
 export async function deleteAlert(id: string) {

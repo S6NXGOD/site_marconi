@@ -1,5 +1,7 @@
 "use client";
 
+import { formatarDiaPrazo } from "@/lib/datas";
+
 import { motion } from "framer-motion";
 import { useMemo } from "react";
 import type { AlertCategory } from "@prisma/client";
@@ -19,11 +21,6 @@ export type AlertItem = {
   description: string;
 };
 
-const dayFmt = new Intl.DateTimeFormat("pt-BR", {
-  weekday: "short",
-  day: "2-digit",
-  month: "short",
-});
 
 const toneStyles = {
   danger: "bg-red-50 text-red-700 ring-red-200",
@@ -96,7 +93,7 @@ export default function AlertsPanel({ alerts }: { alerts: AlertItem[] }) {
                       {text}
                     </span>
                     <time className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                      {dayFmt.format(group.date)}
+                      {formatarDiaPrazo(group.date)}
                     </time>
                     {group.items.length > 1 && (
                       <span className="rounded-full bg-conplan-soft px-2 py-0.5 text-[10px] font-semibold text-conplan">

@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { autorDe, categoryLabels, categoryHeaderGradient } from "@/lib/news";
+import { Prisma, type NewsCategory } from "@prisma/client";
+import {
+  autorDe,
+  categoryBadgeClasses,
+  categoryLabels,
+  categoryHeaderGradient,
+} from "@/lib/news";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NewsCover from "@/components/NewsCover";
@@ -18,6 +24,53 @@ async function getNews(slug: string) {
   return prisma.news.findFirst({
     where: { slug, isPublished: true },
   });
+}
+
+const QUANTAS_RELACIONADAS = 3;
+
+const selectCard = {
+  id: true,
+  title: true,
+  slug: true,
+  coverImage: true,
+  category: true,
+  publishedAt: true,
+} as const;
+
+const maisRecentes: Prisma.NewsOrderByWithRelationInput[] = [
+  { publishedAt: "desc" },
+  { createdAt: "desc" },
+];
+
+/**
+ * Notícias do fim da matéria.
+ *
+ * Prioriza a mesma vertente — quem leu sobre gestão pública tende a querer
+ * mais gestão pública. Mas completa com as outras quando não há três do mesmo
+ * segmento: exigir a mesma categoria fazia a seção sumir por completo, já que
+ * é comum haver poucas notícias de cada vertente.
+ */
+async function getRelacionadas(id: string, category: NewsCategory) {
+  const mesmoSegmento = await prisma.news.findMany({
+    where: { isPublished: true, category, NOT: { id } },
+    orderBy: maisRecentes,
+    take: QUANTAS_RELACIONADAS,
+    select: selectCard,
+  });
+
+  if (mesmoSegmento.length >= QUANTAS_RELACIONADAS) return mesmoSegmento;
+
+  const completar = await prisma.news.findMany({
+    where: {
+      isPublished: true,
+      id: { notIn: [id, ...mesmoSegmento.map((n) => n.id)] },
+    },
+    orderBy: maisRecentes,
+    take: QUANTAS_RELACIONADAS - mesmoSegmento.length,
+    select: selectCard,
+  });
+
+  return [...mesmoSegmento, ...completar];
 }
 
 /** Resumo curto para o preview; cai no início do texto se não houver excerpt. */
@@ -86,23 +139,7 @@ export default async function NoticiaPage({
   if (!news) notFound();
 
   const [related, whatsapp] = await Promise.all([
-    prisma.news.findMany({
-      where: {
-        isPublished: true,
-        category: news.category,
-        NOT: { id: news.id },
-      },
-      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
-      take: 3,
-      select: {
-        id: true,
-        title: true,
-        slug: true,
-        coverImage: true,
-        category: true,
-        publishedAt: true,
-      },
-    }),
+    getRelacionadas(news.id, news.category),
     getWhatsappContacts(),
   ]);
 
@@ -243,18 +280,36 @@ export default async function NoticiaPage({
         {related.length > 0 && (
           <section className="bg-cloud py-14 sm:py-20">
             <div className="section-shell">
-              <h2 className="font-serif text-2xl font-semibold text-conplan sm:text-3xl">
-                Leia também
-              </h2>
+              <div className="flex items-end justify-between gap-4 border-b border-slate-200 pb-4">
+                <div>
+                  <span className="kicker text-marconi">
+                    <span className="h-px w-6 bg-marconi/40" />
+                    Continue lendo
+                  </span>
+                  <h2 className="mt-2 font-serif text-2xl font-semibold text-conplan sm:text-3xl">
+                    Confira também
+                  </h2>
+                </div>
+                <Link
+                  href="/noticias"
+                  className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-marconi transition-colors hover:text-marconi-dark"
+                >
+                  <span className="hidden sm:inline">Ver todas</span>
+                  <span className="sm:hidden">Todas</span>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </Link>
+              </div>
 
-              <div className="mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                 {related.map((item) => (
                   <Link
                     key={item.id}
                     href={`/noticias/${item.slug}`}
-                    className="group relative overflow-hidden rounded-2xl"
+                    className="group relative overflow-hidden rounded-2xl shadow-sm transition-shadow hover:shadow-elegant"
                   >
-                    <div className="relative aspect-[16/10] w-full">
+                    <div className="relative aspect-[16/10] w-full overflow-hidden">
                       <NewsCover
                         src={item.coverImage}
                         alt={item.title}
@@ -262,6 +317,15 @@ export default async function NoticiaPage({
                         sizes="(max-width: 640px) 100vw, 33vw"
                       />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+
+                      {/* A vertente fica visível: a lista completa com outras
+                          categorias quando falta matéria do mesmo segmento. */}
+                      <span
+                        className={`absolute left-3 top-3 rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${categoryBadgeClasses[item.category]}`}
+                      >
+                        {categoryLabels[item.category]}
+                      </span>
+
                       <div className="absolute inset-x-0 bottom-0 p-4">
                         <h3 className="line-clamp-3 font-serif text-base font-semibold leading-snug text-white drop-shadow-lg">
                           {item.title}

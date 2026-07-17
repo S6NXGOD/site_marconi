@@ -7,6 +7,7 @@ import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NewsCover from "@/components/NewsCover";
+import NewsSearch from "@/components/NewsSearch";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { getWhatsappContacts } from "@/lib/content";
 
@@ -32,17 +33,48 @@ const catMap: Record<string, NewsCategory> = {
   geral: "GERAL",
 };
 
+/** Link da aba preservando o termo buscado. */
+function linkDaAba(value: string, q: string): string {
+  const params = new URLSearchParams();
+  if (value !== "todas") params.set("cat", value);
+  if (q) params.set("q", q);
+  const qs = params.toString();
+  return qs ? `/noticias?${qs}` : "/noticias";
+}
+
+/**
+ * Busca por título, resumo e corpo.
+ *
+ * `insensitive` é o que faz "TCE" achar "tce" — sem isso o Postgres compara
+ * com case sensitivity e a busca só funcionaria digitando exatamente igual.
+ */
+function filtroDaBusca(q: string) {
+  if (!q) return {};
+  return {
+    OR: [
+      { title: { contains: q, mode: "insensitive" as const } },
+      { excerpt: { contains: q, mode: "insensitive" as const } },
+      { content: { contains: q, mode: "insensitive" as const } },
+    ],
+  };
+}
+
 export default async function NoticiasPage({
   searchParams,
 }: {
-  searchParams: { cat?: string };
+  searchParams: { cat?: string; q?: string };
 }) {
   const active = searchParams.cat && catMap[searchParams.cat] ? searchParams.cat : "todas";
   const category = catMap[active];
+  const q = (searchParams.q ?? "").trim().slice(0, 80);
 
   const [news, whatsapp] = await Promise.all([
     prisma.news.findMany({
-      where: { isPublished: true, ...(category ? { category } : {}) },
+      where: {
+        isPublished: true,
+        ...(category ? { category } : {}),
+        ...filtroDaBusca(q),
+      },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
       select: {
         id: true,
@@ -78,13 +110,17 @@ export default async function NoticiasPage({
               dia a dia.
             </p>
 
+            <NewsSearch defaultValue={q} cat={category ? active : undefined} />
+
             {/* Filtros (links reais — sem JS) */}
-            <div className="-mx-6 mt-7 overflow-x-auto px-6 pb-1 sm:mx-0 sm:px-0">
+            <div className="-mx-6 mt-4 overflow-x-auto px-6 pb-1 sm:mx-0 sm:px-0">
               <div className="flex w-max gap-1.5 rounded-full border border-white/10 bg-white/5 p-1.5">
                 {tabs.map((t) => (
                   <Link
                     key={t.value}
-                    href={t.value === "todas" ? "/noticias" : `/noticias?cat=${t.value}`}
+                    // O termo buscado sobrevive à troca de categoria — trocar
+                    // de aba é refinar a busca, não recomeçar.
+                    href={linkDaAba(t.value, q)}
                     className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
                       active === t.value
                         ? "bg-marconi text-white shadow-gold"
@@ -102,10 +138,54 @@ export default async function NoticiasPage({
         {/* Grade */}
         <section className="bg-cloud py-12 sm:py-16">
           <div className="section-shell">
-            {news.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-slate-300 bg-white p-12 text-center text-slate-500">
-                Nenhuma notícia publicada nesta categoria.
+            {/* Contagem — a pessoa precisa saber que a busca respondeu, mesmo
+                quando o resultado é curto. */}
+            {(q || category) && news.length > 0 && (
+              <p className="mb-6 text-sm text-slate-500">
+                {news.length === 1 ? "1 notícia encontrada" : `${news.length} notícias encontradas`}
+                {q && (
+                  <>
+                    {" para "}
+                    <strong className="font-semibold text-conplan">“{q}”</strong>
+                  </>
+                )}
               </p>
+            )}
+
+            {news.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-14 text-center">
+                <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-400">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M20 20l-3.5-3.5" />
+                  </svg>
+                </span>
+                <p className="mt-4 font-serif text-xl text-conplan">
+                  {q ? "Nada encontrado para essa busca" : "Nenhuma notícia nesta categoria"}
+                </p>
+                <p className="mx-auto mt-2 max-w-md text-sm text-slate-500">
+                  {q
+                    ? "Tente outras palavras, ou procure em todas as categorias."
+                    : "Experimente outra categoria para ver mais publicações."}
+                </p>
+                {/* Saída óbvia do beco sem saída — nunca deixar só o vazio. */}
+                <div className="mt-6 flex flex-wrap justify-center gap-2">
+                  {q && category && (
+                    <Link
+                      href={`/noticias?q=${encodeURIComponent(q)}`}
+                      className="rounded-full border border-slate-300 px-5 py-2.5 text-sm font-semibold text-conplan transition-colors hover:bg-slate-50"
+                    >
+                      Buscar em todas as categorias
+                    </Link>
+                  )}
+                  <Link
+                    href="/noticias"
+                    className="rounded-full bg-marconi px-5 py-2.5 text-sm font-semibold text-white shadow-gold transition-colors hover:bg-marconi-dark"
+                  >
+                    Ver todas as notícias
+                  </Link>
+                </div>
+              </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {news.map((item) => (
