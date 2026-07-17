@@ -129,6 +129,27 @@ export default function Footer() {
           </p>
           <p>Gestão Pública · Contabilidade · Setor Privado</p>
         </div>
+
+        {/* Crédito do desenvolvedor */}
+        <div className="mt-6 border-t border-white/5 pt-6 text-center">
+          <p className="text-xs text-slate-500">
+            Site e sistema desenvolvidos por{" "}
+            <a
+              href="https://www.instagram.com/fluviodev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold text-slate-400 transition-colors hover:text-marconi-light"
+            >
+              Fluvio Softwares
+            </a>
+            <span className="mx-1.5 text-slate-600" aria-hidden>
+              ·
+            </span>
+            <span className="text-slate-500">
+              Especialista em sites e sistemas para empresas de alto padrão
+            </span>
+          </p>
+        </div>
       </div>
     </footer>
   );
