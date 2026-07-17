@@ -50,9 +50,11 @@ function Badge({ category }: { category: NewsCategory }) {
 export default function NewsPortal({
   news,
   alerts,
+  encerrados,
 }: {
   news: NewsItem[];
   alerts: AlertItem[];
+  encerrados: AlertItem[];
 }) {
   const [filter, setFilter] = useState<Filter>("ALL");
 
@@ -246,7 +248,7 @@ export default function NewsPortal({
           {latest.length > 0 && <NewsCarousel items={latest} />}
 
           {/* Alertas */}
-          <AlertsPanel alerts={alerts} />
+          <AlertsPanel alerts={alerts} encerrados={encerrados} />
         </div>
       </section>
     </>

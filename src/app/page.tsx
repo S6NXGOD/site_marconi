@@ -28,10 +28,11 @@ export const dynamic = "force-dynamic";
 async function getPortalData(): Promise<{
   news: NewsItem[];
   alerts: AlertItem[];
+  encerrados: AlertItem[];
   approvals: ApprovalItem[];
 }> {
   try {
-    const [news, alerts, approvals] = await Promise.all([
+    const [news, alerts, encerrados, approvals] = await Promise.all([
       prisma.news.findMany({
         where: { isPublished: true },
         orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
@@ -60,6 +61,21 @@ async function getPortalData(): Promise<{
           description: true,
         },
       }),
+      prisma.alert.findMany({
+        // Prazos que já passaram — a aba "Encerrados" do painel.
+        // Teto baixo de propósito: é consulta de referência, não a lista
+        // principal, e vai inteira no payload da home.
+        where: { isActive: true, date: { lt: inicioDeHoje() } },
+        orderBy: { date: "desc" },
+        take: 8,
+        select: {
+          id: true,
+          title: true,
+          date: true,
+          category: true,
+          description: true,
+        },
+      }),
       prisma.approval.findMany({
         where: { isActive: true },
         orderBy: [{ order: "asc" }, { createdAt: "desc" }],
@@ -76,6 +92,7 @@ async function getPortalData(): Promise<{
     return {
       news,
       alerts,
+      encerrados,
       // O card É a publicação incorporada: sem link válido não há o que exibir.
       // Filtrado aqui (e não no cliente) para não enviar dados inúteis ao browser.
       approvals: approvals.filter((a) => toEmbedUrl(a.embedUrl)),
@@ -83,12 +100,12 @@ async function getPortalData(): Promise<{
   } catch (error) {
     // O site continua no ar com as seções institucionais; o portal fica vazio.
     console.error("[home] falha ao carregar dados do portal:", error);
-    return { news: [], alerts: [], approvals: [] };
+    return { news: [], alerts: [], encerrados: [], approvals: [] };
   }
 }
 
 export default async function Home() {
-  const [{ news, alerts, approvals }, whatsapp, areas] = await Promise.all([
+  const [{ news, alerts, encerrados, approvals }, whatsapp, areas] = await Promise.all([
     getPortalData(),
     getWhatsappContacts(),
     getBusinessAreas(),
@@ -99,7 +116,7 @@ export default async function Home() {
       <Header />
       <main>
         {/* Topo em formato de Portal: notícias + alertas/prazos */}
-        <NewsPortal news={news} alerts={alerts} />
+        <NewsPortal news={news} alerts={alerts} encerrados={encerrados} />
 
         {/* Apresentação unificada das duas empresas */}
         <BusinessAreas areas={areas} />
