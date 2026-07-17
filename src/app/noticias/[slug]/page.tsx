@@ -152,7 +152,7 @@ export default async function NoticiaPage({
                 <span className="sm:hidden">Voltar</span>
               </Link>
 
-              <ShareButton title={news.title} />
+              <ShareButton title={news.title} summary={resumoDe(news)} />
             </div>
 
             {/* Chip + título + meta */}

@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { normalizarCapas } from "./normaliza-capas";
 
 const prisma = new PrismaClient();
 
@@ -106,6 +107,10 @@ async function conteudoPadrao() {
 async function main() {
   // Conteúdo institucional editável — independente do admin existir ou não.
   await conteudoPadrao();
+
+  // Antes do bloco do admin de propósito: ele retorna cedo quando já existe
+  // usuário, que é justamente o caso de produção.
+  await normalizarCapas(prisma);
 
   const email = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD ?? "";
