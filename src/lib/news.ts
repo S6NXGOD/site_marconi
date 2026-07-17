@@ -92,7 +92,10 @@ export function deadlineLabel(date: Date | string): {
 } {
   const days = diasAte(date);
 
-  if (days < 0) return { text: "Encerrado", tone: "neutral", days };
+  // Vencidos só aparecem no painel (o site filtra a partir de hoje), e lá
+  // "Encerrado" não diz o que interessa: há quanto tempo passou.
+  if (days === -1) return { text: "Venceu ontem", tone: "neutral", days };
+  if (days < -1) return { text: `Venceu há ${-days} dias`, tone: "neutral", days };
   if (days === 0) return { text: "Vence hoje", tone: "danger", days };
   if (days === 1) return { text: "Vence amanhã", tone: "danger", days };
   if (days < 7) return { text: `Faltam ${days} dias`, tone: "danger", days };

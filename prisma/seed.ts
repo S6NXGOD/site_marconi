@@ -4,14 +4,26 @@ import { normalizarCapas } from "./normaliza-capas";
 
 const prisma = new PrismaClient();
 
+const FLAG_CONTEUDO = "bootstrap:conteudo";
+
 /**
  * Conteúdo institucional padrão (Áreas de Atuação e WhatsApp).
  *
  * Isto NÃO é dado fictício: é o conteúdo real que já estava no site, agora
- * editável pelo painel. É criado só uma vez — se o admin editar depois, um
- * novo deploy não sobrescreve.
+ * editável pelo painel. Roda UMA vez na vida do banco e nunca mais.
+ *
+ * A trava é um marcador, e não "a tabela está vazia?". A diferença importa:
+ * vazio também é o que sobra quando o admin apaga tudo de propósito, e a
+ * pergunta errada fazia o deploy seguinte ressuscitar o conteúdo — inclusive
+ * os números de exemplo do WhatsApp, que iriam ao ar.
+ *
+ * Para forçar de novo (banco novo, reset): apague a linha "bootstrap:conteudo"
+ * da tabela SystemFlag.
  */
 async function conteudoPadrao() {
+  const jaRodou = await prisma.systemFlag.findUnique({ where: { key: FLAG_CONTEUDO } });
+  if (jaRodou) return;
+
   // ——— Áreas de Atuação ———
   if ((await prisma.businessArea.count()) === 0) {
     await prisma.businessArea.create({
@@ -89,6 +101,9 @@ async function conteudoPadrao() {
     });
     console.log("[bootstrap] Contatos de WhatsApp criados (troque os números em /admin/whatsapp).");
   }
+
+  // A partir daqui o bootstrap está encerrado para sempre neste banco.
+  await prisma.systemFlag.create({ data: { key: FLAG_CONTEUDO } });
 }
 
 /**

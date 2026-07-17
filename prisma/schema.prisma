@@ -202,3 +202,15 @@ model ScrapeSource {
 
   @@index([isActive])
 }
+
+/// Marcadores de coisas que devem acontecer UMA vez na vida do banco.
+///
+/// Existe por causa de um caso concreto: o bootstrap de conteúdo perguntava
+/// "a tabela está vazia?" para decidir se criava os padrões. Só que uma tabela
+/// vazia também é o resultado de o admin ter apagado tudo de propósito — e o
+/// deploy seguinte ressuscitava o conteúdo, com números de exemplo e tudo.
+/// "Já rodou?" é a pergunta certa; "está vazio?" não é.
+model SystemFlag {
+  key       String   @id
+  createdAt DateTime @default(now())
+}
