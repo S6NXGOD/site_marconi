@@ -5,19 +5,25 @@ import { mkdir, writeFile } from "fs/promises";
 import path from "path";
 import { authOptions } from "@/lib/auth";
 import { UPLOAD_DIR } from "@/lib/uploads";
+import { otimizarImagem } from "@/lib/image-pipeline";
 
 export const runtime = "nodejs";
+// O processamento da imagem pode passar do limite padrão em fotos grandes.
+export const maxDuration = 60;
 
-const MAX_BYTES = 5 * 1024 * 1024; // 5 MB
+const MAX_BYTES = 12 * 1024 * 1024; // 12 MB de entrada (a saída é bem menor)
 
-// Extensão derivada do mime — nunca do nome enviado pelo usuário.
-const ALLOWED: Record<string, string> = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-  "image/avif": "avif",
-  "image/gif": "gif",
-};
+// Formatos aceitos na ENTRADA. A saída é sempre normalizada pelo pipeline.
+const ACEITOS = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/avif",
+  "image/gif",
+  "image/tiff",
+  "image/heic",
+  "image/heif",
+]);
 
 export async function POST(request: Request) {
   // A rota NÃO é coberta pelo middleware (que só protege /admin/**),
@@ -34,31 +40,56 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Nenhum arquivo enviado." }, { status: 400 });
   }
 
-  const ext = ALLOWED[file.type];
-  if (!ext) {
+  if (!ACEITOS.has(file.type)) {
     return NextResponse.json(
-      { error: "Formato inválido. Use JPG, PNG, WEBP, AVIF ou GIF." },
+      { error: "Formato inválido. Envie JPG, PNG, WEBP, AVIF, HEIC ou GIF." },
       { status: 415 }
     );
   }
 
   if (file.size > MAX_BYTES) {
     return NextResponse.json(
-      { error: "Imagem muito grande. O limite é 5 MB." },
+      { error: "Imagem muito grande. O limite é 12 MB." },
       { status: 413 }
     );
   }
 
   const bytes = Buffer.from(await file.arrayBuffer());
 
+  let otimizada;
+  try {
+    otimizada = await otimizarImagem(bytes);
+  } catch (error) {
+    console.error("[upload] falha ao processar imagem:", error);
+    return NextResponse.json(
+      { error: "Não consegui processar esta imagem. Tente outra." },
+      { status: 422 }
+    );
+  }
+
   // Nome gerado no servidor — evita path traversal e colisões.
-  const filename = `${Date.now()}-${randomBytes(6).toString("hex")}.${ext}`;
+  const filename = `${Date.now()}-${randomBytes(6).toString("hex")}.${otimizada.ext}`;
 
   await mkdir(UPLOAD_DIR, { recursive: true });
-  await writeFile(path.join(UPLOAD_DIR, filename), bytes);
+  await writeFile(path.join(UPLOAD_DIR, filename), otimizada.buffer);
+
+  const economia = Math.round((1 - otimizada.depois / otimizada.antes) * 100);
+  console.log(
+    `[upload] ${filename} — ${Math.round(otimizada.antes / 1024)}KB -> ` +
+      `${Math.round(otimizada.depois / 1024)}KB (${economia}% menor, ` +
+      `${otimizada.width}x${otimizada.height})`
+  );
 
   // Servido pela rota GET /api/uploads/[file].
   // (Gravar em public/ não funcionaria: o `next start` só reconhece os
   //  arquivos que existiam em public/ quando o servidor subiu.)
-  return NextResponse.json({ url: `/api/uploads/${filename}` }, { status: 201 });
+  return NextResponse.json(
+    {
+      url: `/uploads/${filename}`.replace("/uploads/", "/api/uploads/"),
+      width: otimizada.width,
+      height: otimizada.height,
+      bytes: otimizada.depois,
+    },
+    { status: 201 }
+  );
 }

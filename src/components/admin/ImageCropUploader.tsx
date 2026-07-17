@@ -52,11 +52,14 @@ async function cropToBlob(
     canvas.height
   );
 
+  // Qualidade alta (0.95) de propósito: quem faz a compressão final é o
+  // servidor (mozjpeg). Enviar já comprimido aqui só somaria perda de
+  // qualidade em cima de perda — o arquivo final seria pior, não menor.
   return new Promise((resolve, reject) =>
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error("falha ao gerar imagem"))),
       "image/jpeg",
-      0.9
+      0.95
     )
   );
 }
