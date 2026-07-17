@@ -19,6 +19,24 @@ export const categoryOptions: { value: NewsCategory; label: string }[] = [
   { value: "GERAL", label: "Geral" },
 ];
 
+/**
+ * Quem assina a notícia. É derivado da categoria, não digitado: a vertente
+ * define a redação responsável, então deixar isso como campo livre só abriria
+ * espaço para grafias divergentes da mesma assinatura.
+ *
+ * A coluna `author` continua existindo e é regravada a cada salvamento, mas
+ * a categoria é a fonte da verdade — a exibição sempre passa por `autorDe`.
+ */
+export const newsAuthors: Record<NewsCategory, string> = {
+  GERAL: "ASCOM Grupo Dr. Marconi Nunes",
+  PRIVADO: "Redação Marconi Nunes Contabilidade",
+  PUBLICO: "Redação CONPLAN",
+};
+
+export function autorDe(category: NewsCategory): string {
+  return newsAuthors[category];
+}
+
 // Fundo de marca usado quando a notícia não tem foto de capa —
 // evita o "card branco" e mantém a identidade por vertente.
 // Tons contidos para a marca d'água branca continuar legível.

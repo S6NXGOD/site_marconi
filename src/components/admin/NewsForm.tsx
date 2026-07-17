@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import ImageCropUploader from "./ImageCropUploader";
-import { categoryOptions } from "@/lib/news";
+import SlugField from "./SlugField";
+import { autorDe, categoryOptions } from "@/lib/news";
 import type { NewsFormState } from "@/app/admin/actions";
 import type { NewsCategory } from "@prisma/client";
 
@@ -12,7 +14,6 @@ type NewsInitial = {
   slug: string;
   excerpt: string | null;
   content: string;
-  author: string | null;
   coverImage: string | null;
   category: NewsCategory;
   isPublished: boolean;
@@ -22,6 +23,8 @@ type Props = {
   action: (state: NewsFormState, formData: FormData) => Promise<NewsFormState>;
   initial?: NewsInitial;
   submitLabel: string;
+  /** domínio público, só para o preview do endereço */
+  siteUrl?: string;
 };
 
 const initialState: NewsFormState = { status: "idle" };
@@ -42,8 +45,19 @@ function SubmitButton({ label }: { label: string }) {
   );
 }
 
-export default function NewsForm({ action, initial, submitLabel }: Props) {
+export default function NewsForm({
+  action,
+  initial,
+  submitLabel,
+  siteUrl,
+}: Props) {
   const [state, formAction] = useFormState(action, initialState);
+  // Título e categoria viram estado porque alimentam os previews do endereço
+  // e da assinatura enquanto a pessoa digita.
+  const [title, setTitle] = useState(initial?.title ?? "");
+  const [category, setCategory] = useState<NewsCategory>(
+    initial?.category ?? "PUBLICO"
+  );
 
   return (
     <form action={formAction} className="space-y-6">
@@ -61,7 +75,8 @@ export default function NewsForm({ action, initial, submitLabel }: Props) {
           id="title"
           name="title"
           type="text"
-          defaultValue={initial?.title}
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
           placeholder="Título da notícia"
           className={fieldClass}
         />
@@ -70,43 +85,45 @@ export default function NewsForm({ action, initial, submitLabel }: Props) {
         )}
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <div>
-          <label htmlFor="category" className="mb-1.5 block text-sm font-medium text-conplan">
-            Categoria
-          </label>
-          <select
-            id="category"
-            name="category"
-            defaultValue={initial?.category ?? "GESTAO_PUBLICA"}
-            className={fieldClass}
-          >
-            {categoryOptions.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </select>
-          {state.errors?.category && (
-            <p className="mt-1 text-xs text-red-600">{state.errors.category}</p>
-          )}
-        </div>
-
-        <div>
-          <label htmlFor="slug" className="mb-1.5 block text-sm font-medium text-conplan">
-            Slug{" "}
-            <span className="font-normal text-slate-400">(opcional)</span>
-          </label>
-          <input
-            id="slug"
-            name="slug"
-            type="text"
-            defaultValue={initial?.slug}
-            placeholder="gerado automaticamente do título"
-            className={fieldClass}
-          />
-        </div>
+      <div>
+        <label htmlFor="category" className="mb-1.5 block text-sm font-medium text-conplan">
+          Categoria
+        </label>
+        <select
+          id="category"
+          name="category"
+          value={category}
+          onChange={(e) => setCategory(e.target.value as NewsCategory)}
+          className={fieldClass}
+        >
+          {categoryOptions.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+        {state.errors?.category && (
+          <p className="mt-1 text-xs text-red-600">{state.errors.category}</p>
+        )}
+        {/* A assinatura acompanha a categoria — ver `newsAuthors` em lib/news. */}
+        <p className="mt-2 flex flex-wrap items-center gap-1.5 text-xs text-slate-500">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0 text-slate-400">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          Assinatura:{" "}
+          <strong className="font-semibold text-conplan">
+            {autorDe(category)}
+          </strong>
+        </p>
       </div>
+
+      <SlugField
+        name="slug"
+        title={title}
+        defaultValue={initial?.slug}
+        siteUrl={siteUrl}
+      />
 
       {/* Capa em 16:9 e sempre JPEG.
           O formato importa: o WhatsApp não renderiza WebP no preview do link,
@@ -119,21 +136,6 @@ export default function NewsForm({ action, initial, submitLabel }: Props) {
         outputWidth={1200}
         hint="Proporção 16:9 — recomendado 1200×675px. É esta imagem que aparece ao compartilhar a notícia no WhatsApp. Sem foto, a capa usa o fundo de marca da categoria."
       />
-
-      <div>
-        <label htmlFor="author" className="mb-1.5 block text-sm font-medium text-conplan">
-          Autor{" "}
-          <span className="font-normal text-slate-400">(opcional)</span>
-        </label>
-        <input
-          id="author"
-          name="author"
-          type="text"
-          defaultValue={initial?.author ?? ""}
-          placeholder="Redação Grupo Dr. Marconi Nunes"
-          className={fieldClass}
-        />
-      </div>
 
       <div>
         <label htmlFor="excerpt" className="mb-1.5 block text-sm font-medium text-conplan">

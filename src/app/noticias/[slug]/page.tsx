@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
-import { categoryLabels, categoryHeaderGradient } from "@/lib/news";
+import { autorDe, categoryLabels, categoryHeaderGradient } from "@/lib/news";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 import NewsCover from "@/components/NewsCover";
@@ -63,7 +63,7 @@ export async function generateMetadata({
       type: "article",
       publishedTime: news.createdAt.toISOString(),
       modifiedTime: news.updatedAt.toISOString(),
-      authors: news.author ? [news.author] : undefined,
+      authors: [autorDe(news.category)],
       siteName: "Grupo Dr. Marconi Nunes",
       locale: "pt_BR",
       images: [
@@ -180,15 +180,13 @@ export default async function NoticiaPage({
                   {dateFmt.format(news.createdAt)}
                 </span>
 
-                {news.author && (
-                  <span className="inline-flex items-center gap-2">
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                      <circle cx="12" cy="7" r="4" />
-                    </svg>
-                    {news.author}
-                  </span>
-                )}
+                <span className="inline-flex items-center gap-2">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                    <circle cx="12" cy="7" r="4" />
+                  </svg>
+                  {autorDe(news.category)}
+                </span>
               </div>
             </div>
           </div>
@@ -233,7 +231,7 @@ export default async function NoticiaPage({
               <div className="mt-12 flex flex-col gap-4 border-t border-slate-200 pt-6 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-sm text-slate-500">
                   Publicado em {dateFmt.format(news.createdAt)}
-                  {news.author && ` · ${news.author}`}
+                  {` · ${autorDe(news.category)}`}
                 </p>
                 <Link
                   href="/#contato"

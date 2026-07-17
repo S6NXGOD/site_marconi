@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { createNews } from "@/app/admin/actions";
+import { SITE_URL } from "@/lib/site";
 import NewsForm from "@/components/admin/NewsForm";
 
 export default function NovaNoticiaPage() {
@@ -19,7 +20,11 @@ export default function NovaNoticiaPage() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:p-8">
-        <NewsForm action={createNews} submitLabel="Criar notícia" />
+        <NewsForm
+          action={createNews}
+          submitLabel="Criar notícia"
+          siteUrl={SITE_URL}
+        />
       </div>
     </div>
   );

@@ -6,7 +6,8 @@ import { getServerSession } from "next-auth";
 import { NewsCategory, AlertCategory, LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { slugify } from "@/lib/slugify";
+import { slugify, slugOtimizado } from "@/lib/slugify";
+import { autorDe } from "@/lib/news";
 
 async function requireSession() {
   const session = await getServerSession(authOptions);
@@ -145,6 +146,16 @@ function isNewsCategory(value: string): value is NewsCategory {
   return value === "PUBLICO" || value === "PRIVADO" || value === "GERAL";
 }
 
+/**
+ * Slug final da notícia.
+ *
+ * O que a pessoa digitou tem prioridade (só normalizado). Vazio, sai do
+ * título já enxuto — sem stopwords e no limite de caracteres.
+ */
+function slugDaNoticia(slugInput: string, title: string): string {
+  return slugInput ? slugify(slugInput) : slugOtimizado(title);
+}
+
 async function ensureUniqueSlug(base: string, ignoreId?: string): Promise<string> {
   const root = slugify(base) || "noticia";
   let slug = root;
@@ -161,7 +172,6 @@ function parseNewsForm(formData: FormData) {
     title: String(formData.get("title") ?? "").trim(),
     excerpt: String(formData.get("excerpt") ?? "").trim(),
     content: String(formData.get("content") ?? "").trim(),
-    author: String(formData.get("author") ?? "").trim(),
     category: String(formData.get("category") ?? ""),
     coverImage: String(formData.get("coverImage") ?? "").trim(),
     slugInput: String(formData.get("slug") ?? "").trim(),
@@ -192,10 +202,10 @@ export async function createNews(
   await prisma.news.create({
     data: {
       title: data.title,
-      slug: await ensureUniqueSlug(data.slugInput || data.title),
+      slug: await ensureUniqueSlug(slugDaNoticia(data.slugInput, data.title)),
       excerpt: data.excerpt || null,
       content: data.content,
-      author: data.author || null,
+      author: autorDe(data.category as NewsCategory),
       category: data.category as NewsCategory,
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,
@@ -220,10 +230,10 @@ export async function updateNews(
     where: { id },
     data: {
       title: data.title,
-      slug: await ensureUniqueSlug(data.slugInput || data.title, id),
+      slug: await ensureUniqueSlug(slugDaNoticia(data.slugInput, data.title), id),
       excerpt: data.excerpt || null,
       content: data.content,
-      author: data.author || null,
+      author: autorDe(data.category as NewsCategory),
       category: data.category as NewsCategory,
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,

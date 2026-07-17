@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { SITE_URL } from "@/lib/site";
 import { updateNews } from "@/app/admin/actions";
 import NewsForm from "@/components/admin/NewsForm";
 
@@ -36,12 +37,12 @@ export default async function EditarNoticiaPage({
         <NewsForm
           action={action}
           submitLabel="Salvar alterações"
+          siteUrl={SITE_URL}
           initial={{
             title: news.title,
             slug: news.slug,
             excerpt: news.excerpt,
             content: news.content,
-            author: news.author,
             coverImage: news.coverImage,
             category: news.category,
             isPublished: news.isPublished,
