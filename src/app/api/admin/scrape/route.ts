@@ -2,7 +2,13 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { buscarItens, filtrarPorPeriodo, type ItemRaspado } from "@/lib/scraper";
+import {
+  buscarItens,
+  filtrarPorPeriodo,
+  periodoValido,
+  MAX_ITENS_BUSCA,
+  type ItemRaspado,
+} from "@/lib/scraper";
 import { ScrapeError } from "@/lib/scrape-fetch";
 
 export const runtime = "nodejs";
@@ -39,7 +45,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Fonte não encontrada." }, { status: 404 });
   }
 
-  const dias = Number.isFinite(body.dias) ? Number(body.dias) : 0;
+  // Sempre um período fechado: sem janela, a tela convidaria a marcar a
+  // página inteira e a importação (que baixa matéria + imagem de cada uma)
+  // é a parte cara.
+  const dias = periodoValido(body.dias);
 
   let itens: ItemRaspado[];
   try {
@@ -57,7 +66,9 @@ export async function POST(request: Request) {
     );
   }
 
-  const noPeriodo = filtrarPorPeriodo(itens, dias);
+  // O teto é a rede de segurança: uma listagem com centenas de itens não
+  // pode virar centenas de linhas na tela nem um payload gigante.
+  const noPeriodo = filtrarPorPeriodo(itens, dias).slice(0, MAX_ITENS_BUSCA);
 
   // Uma consulta só para todos os links, em vez de uma por item.
   const jaExistem = await prisma.news.findMany({
@@ -80,6 +91,8 @@ export async function POST(request: Request) {
     itens: resultado,
     total: itens.length,
     noPeriodo: noPeriodo.length,
+    dias,
+    limitado: filtrarPorPeriodo(itens, dias).length > MAX_ITENS_BUSCA,
     novas: resultado.filter((i) => !i.jaImportada).length,
     fonte: { id: fonte.id, name: fonte.name, category: fonte.category },
   });

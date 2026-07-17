@@ -1,6 +1,7 @@
 "use client";
 
 import { formatarData } from "@/lib/datas";
+import { semMarcacao } from "@/lib/texto-rico";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -32,7 +33,8 @@ const filters: { value: Filter; label: string }[] = [
 ];
 
 function summary(item: NewsItem) {
-  return item.excerpt ?? item.content;
+  // Marcação de link não faz sentido no card e apareceria crua.
+  return semMarcacao(item.excerpt ?? item.content);
 }
 
 function Badge({ category }: { category: NewsCategory }) {

@@ -23,18 +23,31 @@ type Busca = {
   total: number;
   noPeriodo: number;
   novas: number;
+  dias: number;
+  /** houve mais itens no período do que o teto da busca */
+  limitado: boolean;
   fonte: Fonte;
 };
 
 type Criada = { title: string; slug: string };
 type Falha = { title: string; motivo: string };
 
+/**
+ * Períodos fechados, sem "tudo".
+ *
+ * A busca em si custa uma requisição, com ou sem janela — mas sem ela a tela
+ * convida a marcar a página inteira, e a IMPORTAÇÃO é a parte cara: cada item
+ * baixa a página da matéria e a imagem. O servidor recusa período fora desta
+ * lista (ver `periodoValido`).
+ */
 const PERIODOS = [
   { valor: 7, label: "Últimos 7 dias" },
   { valor: 15, label: "Últimos 15 dias" },
   { valor: 30, label: "Últimos 30 dias" },
-  { valor: 0, label: "Tudo que estiver na página" },
 ];
+
+/** Mesmo teto da rota de importação — cada item custa duas requisições. */
+const MAX_SELECAO = 10;
 
 const fieldClass =
   "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-conplan outline-none transition-colors focus:border-marconi focus:ring-2 focus:ring-marconi/20";
@@ -111,7 +124,9 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
     setMarcados((s) => {
       const novo = new Set(s);
       if (novo.has(link)) novo.delete(link);
-      else novo.add(link);
+      // O servidor corta em MAX_ITENS de qualquer forma; barrar aqui evita a
+      // pessoa marcar 20 e descobrir só depois que metade não entrou.
+      else if (novo.size < MAX_SELECAO) novo.add(link);
       return novo;
     });
   }
@@ -120,7 +135,11 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
   const todasMarcadas = disponiveis.length > 0 && disponiveis.every((i) => marcados.has(i.link));
 
   function alternarTodas() {
-    setMarcados(todasMarcadas ? new Set() : new Set(disponiveis.map((i) => i.link)));
+    setMarcados(
+      todasMarcadas
+        ? new Set()
+        : new Set(disponiveis.slice(0, MAX_SELECAO).map((i) => i.link))
+    );
   }
 
   return (
@@ -284,6 +303,14 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
                 {busca.noPeriodo - busca.novas} já {busca.noPeriodo - busca.novas === 1 ? "importada" : "importadas"}
               </p>
 
+              {busca.limitado && (
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+                  A fonte tem mais matérias neste período do que cabe numa
+                  busca. Estas são as mais recentes — use um período menor para
+                  ver o resto.
+                </p>
+              )}
+
               {disponiveis.length > 0 && (
                 <div className="mt-4 flex items-center justify-between gap-3 border-y border-slate-100 py-2.5">
                   <label className="flex cursor-pointer items-center gap-2.5">
@@ -294,11 +321,18 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
                       className="h-4 w-4 rounded border-slate-300 text-marconi focus:ring-marconi"
                     />
                     <span className="text-sm font-medium text-conplan">
-                      Selecionar todas as novas
+                      {disponiveis.length > MAX_SELECAO
+                        ? `Selecionar as ${MAX_SELECAO} primeiras`
+                        : "Selecionar todas as novas"}
                     </span>
                   </label>
-                  <span className="shrink-0 text-xs tabular-nums text-slate-400">
-                    {marcados.size} de {disponiveis.length}
+                  <span
+                    className={`shrink-0 text-xs tabular-nums ${
+                      marcados.size >= MAX_SELECAO ? "font-semibold text-amber-600" : "text-slate-400"
+                    }`}
+                  >
+                    {marcados.size} de {Math.min(disponiveis.length, MAX_SELECAO)}
+                    {marcados.size >= MAX_SELECAO && " (máximo)"}
                   </span>
                 </div>
               )}
@@ -323,7 +357,10 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
                         <input
                           type="checkbox"
                           checked={marcada}
-                          disabled={item.jaImportada}
+                          disabled={
+                            item.jaImportada ||
+                            (!marcada && marcados.size >= MAX_SELECAO)
+                          }
                           onChange={() => alternar(item.link)}
                           className="mt-1 h-4 w-4 shrink-0 rounded border-slate-300 text-marconi focus:ring-marconi disabled:opacity-40"
                         />

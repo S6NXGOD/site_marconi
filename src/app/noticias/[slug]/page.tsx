@@ -17,6 +17,7 @@ import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { getWhatsappContacts } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 import { formatarData } from "@/lib/datas";
+import { comLinks, semMarcacao } from "@/lib/texto-rico";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,9 @@ async function getRelacionadas(id: string, category: NewsCategory) {
 
 /** Resumo curto para o preview; cai no início do texto se não houver excerpt. */
 function resumoDe(news: { excerpt: string | null; content: string }) {
-  const base = news.excerpt?.trim() || news.content.replace(/\s+/g, " ").trim();
+  const bruto = news.excerpt?.trim() || news.content;
+  // Sem isto o preview do WhatsApp mostraria "[texto](url)" literal.
+  const base = semMarcacao(bruto).replace(/\s+/g, " ").trim();
   return base.length > 160 ? `${base.slice(0, 157)}…` : base;
 }
 
@@ -254,7 +257,7 @@ export default async function NoticiaPage({
                         : "text-base leading-[1.85] text-slate-700 sm:text-[17px]"
                     }
                   >
-                    {p}
+                    {comLinks(p, `p${i}`)}
                   </p>
                 ))}
               </div>

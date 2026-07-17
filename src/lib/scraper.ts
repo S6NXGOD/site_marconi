@@ -163,7 +163,25 @@ export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
   return itens;
 }
 
-/** Mantém só o que é de hoje até `dias` atrás. Item sem data sempre passa. */
+/** Períodos aceitos. Fora desta lista, cai no padrão. */
+export const PERIODOS_DIAS = [7, 15, 30] as const;
+export const PERIODO_PADRAO = 7;
+
+/** Teto de itens devolvidos pela busca, qualquer que seja o período. */
+export const MAX_ITENS_BUSCA = 30;
+
+/** Só aceita período conhecido — `dias` vem do navegador. */
+export function periodoValido(dias: unknown): number {
+  const n = Number(dias);
+  return (PERIODOS_DIAS as readonly number[]).includes(n) ? n : PERIODO_PADRAO;
+}
+
+/**
+ * Mantém só o que é de hoje até `dias` atrás.
+ *
+ * Item sem data passa: é melhor mostrar e deixar a pessoa decidir do que
+ * sumir com uma matéria por causa de um seletor de data que falhou.
+ */
 export function filtrarPorPeriodo(itens: ItemRaspado[], dias: number): ItemRaspado[] {
   if (!dias || dias <= 0) return itens;
 
@@ -175,12 +193,46 @@ export function filtrarPorPeriodo(itens: ItemRaspado[], dias: number): ItemRaspa
   return itens.filter((i) => !i.date || i.date >= corte);
 }
 
+/** Elementos que valem um parágrafo no texto final. */
+const BLOCOS = "p, h2, h3, h4, li, blockquote";
+
+/**
+ * Texto de um bloco, com os links preservados em `[texto](url)`.
+ *
+ * `.text()` do cheerio devolveria só as palavras e jogaria fora o href — era
+ * o que apagava as referências da matéria (a nota técnica linkada, por
+ * exemplo). O formato é markdown de propósito: o `content` é renderizado
+ * escapado, então guardar <a> ali mostraria a tag na tela; e interpretar HTML
+ * de terceiros abriria XSS. Com marcação simples, quem monta o <a> somos nós.
+ */
+function textoComLinks($: cheerio.CheerioAPI, bloco: cheerio.Cheerio<any>): string {
+  const clone = bloco.clone();
+
+  clone.find("a").each((_, a) => {
+    const $a = $(a);
+    const texto = $a.text().trim();
+    const href = ($a.attr("href") ?? "").trim();
+
+    // Só http/https vira link. Um href "javascript:" nunca deve chegar ao
+    // renderizador — e âncora interna do site de origem não serve aqui.
+    if (!texto) return;
+    if (!/^https?:\/\//i.test(href)) {
+      $a.replaceWith(texto);
+      return;
+    }
+    // Link cujo texto já é a própria URL não precisa de marcação.
+    $a.replaceWith(texto === href ? texto : `[${texto}](${href})`);
+  });
+
+  return limpar(clone.text());
+}
+
 /**
  * Texto da matéria, da página dela.
  *
  * A listagem só tem o resumo picotado ("[...]"), que não serve de rascunho.
- * Devolve texto puro, com linha em branco entre parágrafos, que é o formato
- * que o campo `content` já usa.
+ * Devolve texto puro com linha em branco entre parágrafos — o formato que o
+ * campo `content` já usa — e os links em markdown.
  */
 export async function buscarConteudo(
   link: string,
@@ -193,19 +245,44 @@ export async function buscarConteudo(
   if (corpo.length === 0) return "";
 
   // Fora o que não é matéria e viraria lixo no meio do texto.
-  corpo.find("script,style,noscript,iframe,form,figure,figcaption,.sharedaddy,.jp-relatedposts").remove();
+  corpo
+    .find("script,style,noscript,iframe,form,figure,figcaption,.sharedaddy,.jp-relatedposts")
+    .remove();
 
-  const paragrafos = corpo
-    .find("p")
-    .map((_, p) => limpar($(p).text()))
-    .get()
-    .filter((t) => t.length > 0);
+  const paragrafos: string[] = [];
+  // Um <p> dentro de <blockquote> seria capturado duas vezes: uma pelo pai,
+  // outra por ele mesmo. Marcar o que já saiu resolve sem depender de subir a
+  // árvore comparando ancestrais.
+  const jaSaiu = new Set<unknown>();
 
-  // Sem <p>, o texto pode estar solto em <div> — melhor que devolver vazio.
-  if (paragrafos.length === 0) {
-    const solto = limpar(corpo.text());
-    return solto.length > 40 ? solto : "";
-  }
+  corpo.find(BLOCOS).each((_, el) => {
+    if (jaSaiu.has(el)) return;
 
-  return paragrafos.join("\n\n");
+    const $el = $(el);
+    const texto = textoComLinks($, $el);
+    if (!texto) return;
+
+    paragrafos.push(texto);
+    // O texto deste bloco já inclui o dos filhos.
+    $el.find(BLOCOS).each((__, filho) => {
+      jaSaiu.add(filho);
+    });
+  });
+
+  if (paragrafos.length > 0) return paragrafos.join("\n\n");
+
+  // Sem bloco reconhecível, o texto pode estar solto em <div>. Quebrar pelas
+  // linhas em branco do HTML preserva os parágrafos; jogar tudo num
+  // `.text()` os fundiria num bloco único — que é justamente o que não pode
+  // acontecer, porque o rascunho vai para uma tela de leitura.
+  const bruto = corpo.text();
+  const soltos = bruto
+    .split(/\n\s*\n/)
+    .map((t) => limpar(t))
+    .filter((t) => t.length > 30);
+
+  if (soltos.length > 1) return soltos.join("\n\n");
+
+  const unico = limpar(bruto);
+  return unico.length > 40 ? unico : "";
 }

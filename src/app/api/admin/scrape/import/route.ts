@@ -12,14 +12,21 @@ import { buscarConteudo, parseDataRaspada } from "@/lib/scraper";
 import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
 import { dataDeInput } from "@/lib/datas";
 import { autorDe } from "@/lib/news";
+import { semMarcacao } from "@/lib/texto-rico";
 
 export const runtime = "nodejs";
 // Cada item baixa a página da matéria e a imagem. Com vários selecionados,
 // o padrão não dá conta.
 export const maxDuration = 300;
 
-/** Teto por importação — evita uma seleção enorme estourar o tempo da rota. */
-const MAX_ITENS = 20;
+/**
+ * Teto por importação.
+ *
+ * Cada item aqui custa duas requisições externas (a página da matéria e a
+ * imagem) mais o sharp. É a operação cara do módulo — a busca é uma
+ * requisição só. Dez de cada vez cabe no tempo da rota com folga.
+ */
+const MAX_ITENS = 10;
 
 type ItemPedido = {
   title?: string;
@@ -59,7 +66,9 @@ async function baixarCapa(url: string): Promise<string | null> {
 function resumoDe(excerpt: string, conteudo: string): string | null {
   // O "[...]" que os temas WordPress cravam no fim do resumo não faz sentido
   // fora da listagem de origem.
-  const base = (excerpt || conteudo).replace(/\s*\[[^\]]*\]\s*$/, "").trim();
+  // O "[...]" que os temas WordPress cravam no fim do resumo não faz sentido
+  // fora da listagem; a marcação de link também não, no resumo.
+  const base = semMarcacao(excerpt || conteudo).replace(/\s*\[[^\]]*\]\s*$/, "").trim();
   if (!base) return null;
   return base.length > 220 ? `${base.slice(0, 217)}…` : base;
 }
