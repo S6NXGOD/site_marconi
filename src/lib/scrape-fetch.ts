@@ -100,10 +100,18 @@ export async function buscarHtml(bruta: string): Promise<string> {
       // manual: um redirect pode sair de um host público para um interno, e a
       // validação de cima já teria passado.
       redirect: "manual",
+      // Cabeçalhos de navegador completos: alguns sites recusam quem não
+      // "parece" um navegador. Não resolve bloqueio por IP (Cloudflare
+      // barrando datacenter), mas passa nos casos limítrofes.
       headers: {
         "User-Agent": USER_AGENT,
-        Accept: "text/html,application/xhtml+xml",
-        "Accept-Language": "pt-BR,pt;q=0.9",
+        Accept:
+          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Upgrade-Insecure-Requests": "1",
       },
     });
 
@@ -117,7 +125,10 @@ export async function buscarHtml(bruta: string): Promise<string> {
     if (!res.ok) {
       throw new ScrapeError(
         res.status === 403 || res.status === 429
-          ? `O site recusou a conexão (HTTP ${res.status}). Pode estar bloqueando acessos automáticos.`
+          ? `O site bloqueou o acesso automático (HTTP ${res.status}). ` +
+            "Alguns sites (com proteção da Cloudflare, por exemplo) recusam " +
+            "requisições vindas de servidores, mesmo que o site abra normalmente " +
+            "no seu navegador. Não há como contornar isso pelo painel."
           : `O site respondeu HTTP ${res.status}.`
       );
     }

@@ -193,9 +193,6 @@ export function filtrarPorPeriodo(itens: ItemRaspado[], dias: number): ItemRaspa
   return itens.filter((i) => !i.date || i.date >= corte);
 }
 
-/** Elementos que valem um parágrafo no texto final. */
-const BLOCOS = "p, h2, h3, h4, li, blockquote";
-
 /**
  * Texto de um bloco, com os links preservados em `[texto](url)`.
  *
@@ -227,12 +224,100 @@ function textoComLinks($: cheerio.CheerioAPI, bloco: cheerio.Cheerio<any>): stri
   return limpar(clone.text());
 }
 
+/** URL de embed de vídeo (YouTube/Vimeo) a partir de um src de iframe. */
+function urlDeVideo(src: string): string {
+  const yt = /(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i.exec(src);
+  if (yt) return `https://www.youtube.com/watch?v=${yt[1]}`;
+  const vimeo = /(?:vimeo\.com\/(?:video\/)?)(\d+)/i.exec(src);
+  if (vimeo) return `https://vimeo.com/${vimeo[1]}`;
+  return "";
+}
+
 /**
- * Texto da matéria, da página dela.
+ * Percorre o corpo em ORDEM e monta a marcação rica.
+ *
+ * Blocos separados por linha em branco, cada um num formato que o renderizador
+ * (parseConteudo) reconhece:
+ *   texto de parágrafo, com `[link](url)`
+ *   `## Subtítulo`
+ *   `![alt](url-da-imagem)`   ← posição preservada no meio do texto
+ *   `@video(url)`
+ *   `- item de lista`
+ *
+ * Antes só o texto era extraído: o gráfico do meio de uma matéria da Receita,
+ * por exemplo, sumia. Agora imagem e vídeo entram no lugar certo.
+ */
+function extrairBlocos(
+  $: cheerio.CheerioAPI,
+  raiz: cheerio.Cheerio<any>,
+  base: string
+): string[] {
+  const blocos: string[] = [];
+
+  const imagem = (el: any) => {
+    const src = imagemDe($, $(el));
+    const url = absoluta(src, base);
+    // SVG e ícones minúsculos não são conteúdo; a validação real é no download.
+    if (!url || /\.svg(\?|$)/i.test(url)) return;
+    const alt = ($(el).attr("alt") || "").trim().replace(/[[\]()]/g, "");
+    blocos.push(`![${alt}](${url})`);
+  };
+
+  const walk = (no: any) => {
+    for (const filho of $(no).contents().toArray() as any[]) {
+      const tag = (filho.tagName || filho.name || "").toLowerCase();
+      if (!tag) continue; // nó de texto solto — o conteúdo vem nos <p>
+
+      if (tag === "img") {
+        imagem(filho);
+      } else if (tag === "iframe") {
+        const url = urlDeVideo($(filho).attr("src") || "");
+        if (url) blocos.push(`@video(${url})`);
+      } else if (/^h[1-4]$/.test(tag)) {
+        const t = textoComLinks($, $(filho));
+        if (t) blocos.push(`## ${t}`);
+      } else if (tag === "p" || tag === "blockquote") {
+        const $p = $(filho);
+        const t = textoComLinks($, $p);
+        if (t) {
+          // Subtítulo disfarçado: um <p> que é SÓ negrito, curto e sem ponto
+          // final. Muitos sites (a Receita entre eles) não usam <h2> — marcam
+          // seção com <p><strong>. Sem isto, viravam parágrafo comum.
+          const soNegrito =
+            $p.children().length > 0 &&
+            $p.find("strong,b").first().text().trim() === $p.text().trim();
+          if (soNegrito && t.length <= 70 && !/[.!?:,;]$/.test(t)) {
+            blocos.push(`## ${t}`);
+          } else {
+            blocos.push(t);
+          }
+        }
+        // imagem embrulhada num <p> continua sendo imagem
+        $p.find("img").each((_, im) => imagem(im));
+      } else if (tag === "ul" || tag === "ol") {
+        const itens = $(filho)
+          .children("li")
+          .map((_, li) => textoComLinks($, $(li)))
+          .get()
+          .filter(Boolean)
+          .map((t) => `- ${t}`);
+        if (itens.length) blocos.push(itens.join("\n"));
+      } else if (tag !== "li") {
+        // Qualquer outro container (div, figure, dl/dt do Plone, a que embrulha
+        // imagem…) é percorrido: é onde a imagem e o vídeo costumam se esconder.
+        walk(filho);
+      }
+    }
+  };
+
+  walk(raiz.get(0));
+  return blocos;
+}
+
+/**
+ * Corpo da matéria, da página dela, em marcação rica.
  *
  * A listagem só tem o resumo picotado ("[...]"), que não serve de rascunho.
- * Devolve texto puro com linha em branco entre parágrafos — o formato que o
- * campo `content` já usa — e os links em markdown.
  */
 export async function buscarConteudo(
   link: string,
@@ -244,43 +329,21 @@ export async function buscarConteudo(
   const corpo = $(contentSelector).first();
   if (corpo.length === 0) return "";
 
-  // Fora o que não é matéria e viraria lixo no meio do texto.
+  // Fora o que não é matéria. Figure e iframe FICAM: são imagem e vídeo.
   corpo
-    .find("script,style,noscript,iframe,form,figure,figcaption,.sharedaddy,.jp-relatedposts")
+    .find("script,style,noscript,form,.sharedaddy,.jp-relatedposts,.social,.compartilhe")
     .remove();
 
-  const paragrafos: string[] = [];
-  // Um <p> dentro de <blockquote> seria capturado duas vezes: uma pelo pai,
-  // outra por ele mesmo. Marcar o que já saiu resolve sem depender de subir a
-  // árvore comparando ancestrais.
-  const jaSaiu = new Set<unknown>();
-
-  corpo.find(BLOCOS).each((_, el) => {
-    if (jaSaiu.has(el)) return;
-
-    const $el = $(el);
-    const texto = textoComLinks($, $el);
-    if (!texto) return;
-
-    paragrafos.push(texto);
-    // O texto deste bloco já inclui o dos filhos.
-    $el.find(BLOCOS).each((__, filho) => {
-      jaSaiu.add(filho);
-    });
-  });
-
-  if (paragrafos.length > 0) return paragrafos.join("\n\n");
+  const blocos = extrairBlocos($, corpo, link);
+  if (blocos.length > 0) return blocos.join("\n\n");
 
   // Sem bloco reconhecível, o texto pode estar solto em <div>. Quebrar pelas
-  // linhas em branco do HTML preserva os parágrafos; jogar tudo num
-  // `.text()` os fundiria num bloco único — que é justamente o que não pode
-  // acontecer, porque o rascunho vai para uma tela de leitura.
+  // linhas em branco preserva os parágrafos em vez de fundir tudo num bloco.
   const bruto = corpo.text();
   const soltos = bruto
     .split(/\n\s*\n/)
     .map((t) => limpar(t))
     .filter((t) => t.length > 30);
-
   if (soltos.length > 1) return soltos.join("\n\n");
 
   const unico = limpar(bruto);

@@ -179,6 +179,16 @@ export default function NewsForm({
         {state.errors?.content && (
           <p className="mt-1 text-xs text-red-600">{state.errors.content}</p>
         )}
+        {/* Marcação simples — o mesmo formato que a importação gera. */}
+        <p className="mt-1.5 text-xs text-slate-400">
+          Formatação:{" "}
+          <code className="rounded bg-slate-100 px-1 text-slate-600">## Subtítulo</code>{" "}
+          ·{" "}
+          <code className="rounded bg-slate-100 px-1 text-slate-600">- item de lista</code>{" "}
+          ·{" "}
+          <code className="rounded bg-slate-100 px-1 text-slate-600">[texto](link)</code>{" "}
+          · <code className="rounded bg-slate-100 px-1 text-slate-600">![](imagem)</code>
+        </p>
       </div>
 
       <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-cloud px-4 py-3">

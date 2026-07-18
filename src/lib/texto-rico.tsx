@@ -49,11 +49,19 @@ export function comLinks(texto: string, chave = ""): ReactNode[] {
 }
 
 /**
- * Tira a marcação, deixando só o texto.
+ * Tira toda a marcação, deixando só o texto corrido.
  *
- * Serve para onde link não faz sentido e a marcação apareceria crua: resumo
- * dos cards, description do Google e preview do WhatsApp.
+ * Serve para onde não cabe formatação e ela apareceria crua: resumo dos cards,
+ * description do Google e preview do WhatsApp. Imagens e vídeos somem (não são
+ * texto); título e lista viram texto simples; link vira o rótulo.
  */
 export function semMarcacao(texto: string): string {
-  return texto.replace(LINK, "$1");
+  return texto
+    .replace(/!\[[^\]]*\]\([^)]*\)/g, "") // imagens: fora
+    .replace(/@video\([^)]*\)/g, "") // vídeos: fora
+    .replace(/^#{1,4}\s+/gm, "") // marcador de título
+    .replace(/^[-*]\s+/gm, "") // marcador de lista
+    .replace(LINK, "$1") // link → texto
+    .replace(/\s+/g, " ")
+    .trim();
 }

@@ -36,16 +36,20 @@ type ItemPedido = {
   imageUrl?: string;
 };
 
+/** Teto de imagens INLINE por matéria — cada uma custa download + sharp. */
+const MAX_IMAGENS_INLINE = 6;
+
 /**
- * A capa é baixada e reprocessada em vez de guardar o link do site de origem.
+ * Baixa uma imagem externa, otimiza (sharp) e grava no volume. Devolve o
+ * caminho local, ou null se não deu.
  *
- * Dois motivos concretos: `remotePatterns` está vazio no next.config de
- * propósito (para o site não virar proxy de imagem de terceiros), então uma
- * URL externa simplesmente não renderizaria; e o preview do WhatsApp aponta
- * para o arquivo cru — que passaria a depender do site da fonte continuar no ar
- * e servindo aquele arquivo.
+ * Baixar em vez de guardar o link do site de origem, por dois motivos:
+ * `remotePatterns` está vazio no next.config de propósito (para o site não
+ * virar proxy de imagem de terceiros), então uma URL externa nem renderizaria;
+ * e a imagem passaria a depender do site da fonte continuar servindo o arquivo.
+ * E sempre otimizada — é o que reduz o peso no volume, como nas capas.
  */
-async function baixarCapa(url: string): Promise<string | null> {
+async function baixarImagem(url: string): Promise<string | null> {
   const bytes = await buscarImagem(url);
   if (!bytes) return null;
 
@@ -56,10 +60,50 @@ async function baixarCapa(url: string): Promise<string | null> {
     await writeFile(path.join(UPLOAD_DIR, nome), otimizada.buffer);
     return `/api/uploads/${nome}`;
   } catch (e) {
-    // Capa é acessório: a matéria entra sem imagem em vez de falhar inteira.
-    console.warn("[scrape/import] capa descartada:", (e as Error).message);
+    console.warn("[scrape/import] imagem descartada:", (e as Error).message);
     return null;
   }
+}
+
+const RE_IMG_MD = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
+
+/**
+ * Baixa e otimiza as imagens do corpo, trocando a URL externa pela local.
+ *
+ * A imagem de abertura costuma ser a mesma da capa (o TCE repete a foto do
+ * WhatsApp): quando há capa, o primeiro bloco de imagem é removido para não
+ * aparecer duas vezes. As imagens além do teto também saem, para não deixar
+ * uma URL externa que não renderizaria.
+ */
+async function processarImagens(
+  conteudo: string,
+  temCapa: boolean
+): Promise<string> {
+  let texto = conteudo;
+
+  // Tira a imagem de abertura duplicada da capa.
+  if (temCapa) {
+    texto = texto.replace(/^\s*!\[[^\]]*\]\([^)]*\)\s*(\n\n|$)/, "");
+  }
+
+  const urls = Array.from(texto.matchAll(RE_IMG_MD)).map((m) => m[2]);
+  const unicas = Array.from(new Set(urls));
+
+  const mapa = new Map<string, string | null>();
+  for (const url of unicas.slice(0, MAX_IMAGENS_INLINE)) {
+    mapa.set(url, await baixarImagem(url));
+  }
+
+  // Reescreve cada ![alt](url): local quando baixou; some quando não.
+  return texto
+    .replace(RE_IMG_MD, (bloco, alt, url) => {
+      const local = mapa.get(url);
+      if (local) return `![${alt}](${local})`;
+      return ""; // baixou e falhou, ou passou do teto
+    })
+    // As remoções podem deixar 3+ quebras de linha seguidas.
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 }
 
 /**
@@ -143,7 +187,10 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const capa = pedido.imageUrl ? await baixarCapa(String(pedido.imageUrl)) : null;
+      const capa = pedido.imageUrl ? await baixarImagem(String(pedido.imageUrl)) : null;
+
+      // Baixa/otimiza as imagens do meio do texto e tira a que duplica a capa.
+      const corpoFinal = await processarImagens(corpo, Boolean(capa));
 
       // A data vem da fonte; sem data legível, entra como hoje.
       const dia = parseDataRaspada(String(pedido.date ?? ""));
@@ -156,8 +203,8 @@ export async function POST(request: Request) {
           // resolve colisão. Sem isto, o título inteiro do órgão vira slug —
           // saíam endereços de 114 caracteres.
           slug: await slugUnico(slugDaNoticia("", title)),
-          excerpt: resumoDaMateria(corpo),
-          content: corpo,
+          excerpt: resumoDaMateria(corpoFinal),
+          content: corpoFinal,
           coverImage: capa,
           category: fonte.category,
           author: autorDe(fonte.category),

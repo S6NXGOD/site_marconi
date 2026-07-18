@@ -17,7 +17,7 @@ import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { getWhatsappContacts } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
 import { formatarData } from "@/lib/datas";
-import { comLinks } from "@/lib/texto-rico";
+import { ConteudoNoticia } from "@/lib/conteudo";
 import { resumoExibicao, resumoRepeteCorpo } from "@/lib/resumo";
 
 export const dynamic = "force-dynamic";
@@ -149,18 +149,6 @@ export default async function NoticiaPage({
     getWhatsappContacts(),
   ]);
 
-  // Conteúdo em texto simples -> parágrafos.
-  //
-  // O `\r?` não é decoração: o <textarea> do painel devolve CRLF na submissão
-  // (é a especificação do HTML), então uma notícia editada chega aqui com
-  // \r\n\r\n entre os parágrafos. Procurar dois \n grudados não casa — tem um
-  // \r no meio — e a matéria inteira virava um bloco único. A gravação agora
-  // normaliza, mas isto cobre o que já está gravado assim.
-  const paragraphs = news.content
-    .split(/\r?\n\s*\r?\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
   return (
     <>
       <Header />
@@ -257,23 +245,9 @@ export default async function NoticiaPage({
               </figure>
             )}
 
-            {/* Texto */}
+            {/* Texto — com subtítulos, imagens e vídeos do corpo. */}
             <div className={`mx-auto max-w-3xl ${news.coverImage ? "mt-10" : ""}`}>
-              {/* primeiro parágrafo em destaque (lide) */}
-              <div className="space-y-5">
-                {paragraphs.map((p, i) => (
-                  <p
-                    key={i}
-                    className={
-                      i === 0
-                        ? "text-lg leading-[1.8] text-conplan sm:text-xl"
-                        : "text-base leading-[1.85] text-slate-700 sm:text-[17px]"
-                    }
-                  >
-                    {comLinks(p, `p${i}`)}
-                  </p>
-                ))}
-              </div>
+              <ConteudoNoticia content={news.content} />
 
               {/* ——— Crédito da fonte ———
                   Fica em campo próprio (sourceUrl/sourceName) e é montado aqui,
