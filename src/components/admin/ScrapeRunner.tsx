@@ -15,6 +15,7 @@ type Item = {
   date: string;
   excerpt: string;
   imageUrl: string;
+  category: string;
   jaImportada: boolean;
 };
 

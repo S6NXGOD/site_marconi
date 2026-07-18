@@ -53,8 +53,25 @@ model News {
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now()) @updatedAt
 
+  /// Tags livres (IRPF 2026, Impostos…). Complementam a vertente (category),
+  /// não a substituem: category diz o SETOR; a tag diz o ASSUNTO.
+  tags        Tag[]
+
   @@index([isPublished, publishedAt])
   @@index([category])
+}
+
+/// Assunto livre de uma notícia — reaproveitável entre várias (m2m).
+/// O slug é a chave de reúso: "IRPF 2026" e "irpf 2026" viram a mesma tag.
+model Tag {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+
+  news News[]
+
+  @@index([slug])
 }
 
 // Distingue a frente do assunto da notícia para filtragem no front-end.
@@ -191,6 +208,10 @@ model ScrapeSource {
   dateSelector    String?
   imageSelector   String?
   excerptSelector String?
+
+  /// Categoria/assunto na listagem (ex.: "Serviços" na Receita). Vira uma tag
+  /// sugerida na notícia importada.
+  categorySelector String?
 
   // ——— Seletor da PÁGINA DA MATÉRIA ———
   /// Corpo do texto. Sem ele, o rascunho nasce só com o resumo da listagem.

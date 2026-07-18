@@ -10,6 +10,8 @@ export type ItemRaspado = {
   date: string;
   excerpt: string;
   imageUrl: string;
+  /** categoria/assunto da fonte (ex.: "Serviços") — vira tag sugerida */
+  category: string;
   /** já existe no banco — vem marcado para o painel explicar o porquê */
   jaImportada?: boolean;
 };
@@ -77,6 +79,7 @@ export type Fonte = {
   dateSelector?: string | null;
   imageSelector?: string | null;
   excerptSelector?: string | null;
+  categorySelector?: string | null;
   contentSelector?: string | null;
 };
 
@@ -95,6 +98,14 @@ function imagemDe($: cheerio.CheerioAPI, el: cheerio.Cheerio<any>): string {
   const srcset = img.attr("srcset");
   if (srcset) return srcset.split(",")[0]?.trim().split(/\s+/)[0] ?? "";
   return "";
+}
+
+/** Nome de categoria válido: curto, sem virar uma data ou uma frase inteira. */
+function nomeDeCategoria(bruto: string): string {
+  const t = limpar(bruto);
+  if (!t || t.length > 40) return "";
+  if (/\d{1,2}[/.]\d{1,2}[/.]\d{4}|\d{4}-\d{2}-\d{2}/.test(t)) return ""; // é data
+  return t;
 }
 
 /** Resolve href/src relativo contra a página de origem. */
@@ -156,6 +167,11 @@ export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
         : "",
       imageUrl: fonte.imageSelector
         ? absoluta(imagemDe($, $el.find(fonte.imageSelector)), fonte.url)
+        : "",
+      // Categoria da fonte: nome curto e limpo (vira tag). Datas ou frases
+      // longas capturadas por engano são descartadas.
+      category: fonte.categorySelector
+        ? nomeDeCategoria($el.find(fonte.categorySelector).first().text())
         : "",
     });
   });

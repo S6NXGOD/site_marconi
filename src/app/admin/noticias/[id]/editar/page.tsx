@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SITE_URL } from "@/lib/site";
 import { inputDeData } from "@/lib/datas";
+import { getTagSuggestions } from "@/lib/get-tags";
 import { updateNews } from "@/app/admin/actions";
 import NewsForm from "@/components/admin/NewsForm";
 
@@ -11,7 +12,13 @@ export default async function EditarNoticiaPage({
 }: {
   params: { id: string };
 }) {
-  const news = await prisma.news.findUnique({ where: { id: params.id } });
+  const [news, tagSuggestions] = await Promise.all([
+    prisma.news.findUnique({
+      where: { id: params.id },
+      include: { tags: { select: { name: true } } },
+    }),
+    getTagSuggestions(),
+  ]);
   if (!news) notFound();
 
   // Amarra o id à server action de atualização.
@@ -39,6 +46,7 @@ export default async function EditarNoticiaPage({
           action={action}
           submitLabel="Salvar alterações"
           siteUrl={SITE_URL}
+          tagSuggestions={tagSuggestions}
           initial={{
             title: news.title,
             slug: news.slug,
@@ -48,6 +56,7 @@ export default async function EditarNoticiaPage({
             category: news.category,
             publishedAt: inputDeData(news.publishedAt),
             isPublished: news.isPublished,
+            tags: news.tags.map((t) => t.name),
           }}
         />
       </div>

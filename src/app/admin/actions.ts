@@ -8,6 +8,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
 import { sanitizarConteudo, htmlParaTexto } from "@/lib/sanitize";
+import { tagsDoFormulario } from "@/lib/tags";
 import { autorDe } from "@/lib/news";
 import { dataDeInput, inputDeData } from "@/lib/datas";
 import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
@@ -186,7 +187,21 @@ function parseNewsForm(formData: FormData) {
     slugInput: String(formData.get("slug") ?? "").trim(),
     publishedAt: String(formData.get("publishedAt") ?? "").trim(),
     isPublished: formData.get("isPublished") === "on",
+    tags: tagsDoFormulario(String(formData.get("tags") ?? "")),
   };
+}
+
+/**
+ * Relação de tags para o Prisma: cria a que não existe, reaproveita a que
+ * existe (pelo slug). No update, `set: []` primeiro zera o vínculo antigo — sem
+ * isso, remover uma tag no formulário não a desconectaria.
+ */
+function relacaoTags(tags: { name: string; slug: string }[], substituir: boolean) {
+  const connectOrCreate = tags.map((t) => ({
+    where: { slug: t.slug },
+    create: { name: t.name, slug: t.slug },
+  }));
+  return substituir ? { set: [], connectOrCreate } : { connectOrCreate };
 }
 
 function validateNews(data: ReturnType<typeof parseNewsForm>): NewsFormState | null {
@@ -222,6 +237,7 @@ export async function createNews(
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,
       publishedAt: dataDePublicacao(data.publishedAt),
+      tags: relacaoTags(data.tags, false),
     },
   });
 
@@ -257,6 +273,7 @@ export async function updateNews(
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,
       publishedAt: dataDePublicacao(data.publishedAt, atual?.publishedAt),
+      tags: relacaoTags(data.tags, true),
     },
   });
 
@@ -640,6 +657,7 @@ function parseSourceForm(formData: FormData) {
     dateSelector: txt("dateSelector"),
     imageSelector: txt("imageSelector"),
     excerptSelector: txt("excerptSelector"),
+    categorySelector: txt("categorySelector"),
     contentSelector: txt("contentSelector"),
     isActive: formData.get("isActive") === "on",
   };
@@ -669,6 +687,7 @@ function dadosDaFonte(d: ReturnType<typeof parseSourceForm>) {
     dateSelector: d.dateSelector || null,
     imageSelector: d.imageSelector || null,
     excerptSelector: d.excerptSelector || null,
+    categorySelector: d.categorySelector || null,
     contentSelector: d.contentSelector || null,
     isActive: d.isActive,
   };

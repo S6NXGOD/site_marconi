@@ -14,6 +14,7 @@ import { dataDeInput } from "@/lib/datas";
 import { autorDe } from "@/lib/news";
 import { resumoInteligente } from "@/lib/resumo";
 import { markupParaHtml } from "@/lib/markup-html";
+import { normalizarTags } from "@/lib/tags";
 
 export const runtime = "nodejs";
 // Cada item baixa a página da matéria e a imagem. Com vários selecionados,
@@ -35,6 +36,7 @@ type ItemPedido = {
   date?: string;
   excerpt?: string;
   imageUrl?: string;
+  category?: string;
 };
 
 /** Teto de imagens INLINE por matéria — cada uma custa download + sharp. */
@@ -197,6 +199,10 @@ export async function POST(request: Request) {
       const dia = parseDataRaspada(String(pedido.date ?? ""));
       const publishedAt = (dia ? dataDeInput(dia) : null) ?? new Date();
 
+      // A categoria raspada vira tag SUGERIDA — o rascunho já nasce com o
+      // assunto, e a pessoa ajusta na edição.
+      const tags = normalizarTags([String(pedido.category ?? "")]);
+
       const nova = await prisma.news.create({
         data: {
           title,
@@ -217,6 +223,14 @@ export async function POST(request: Request) {
           publishedAt,
           sourceUrl: link,
           sourceName: fonte.name,
+          tags: tags.length
+            ? {
+                connectOrCreate: tags.map((t) => ({
+                  where: { slug: t.slug },
+                  create: { name: t.name, slug: t.slug },
+                })),
+              }
+            : undefined,
         },
         select: { title: true, slug: true },
       });

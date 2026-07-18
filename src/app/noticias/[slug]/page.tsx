@@ -25,6 +25,7 @@ export const dynamic = "force-dynamic";
 async function getNews(slug: string) {
   return prisma.news.findFirst({
     where: { slug, isPublished: true },
+    include: { tags: { select: { name: true, slug: true }, orderBy: { name: "asc" } } },
   });
 }
 
@@ -248,6 +249,24 @@ export default async function NoticiaPage({
             {/* Texto — com subtítulos, imagens e vídeos do corpo. */}
             <div className={`mx-auto max-w-3xl ${news.coverImage ? "mt-10" : ""}`}>
               <ConteudoNoticia content={news.content} />
+
+              {/* ——— Assuntos (tags) ——— cada uma leva à busca por aquele tema. */}
+              {news.tags.length > 0 && (
+                <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-6">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                    Assuntos
+                  </span>
+                  {news.tags.map((t) => (
+                    <Link
+                      key={t.slug}
+                      href={`/noticias?tag=${t.slug}`}
+                      className="rounded-full bg-conplan-soft px-3 py-1 text-xs font-semibold text-conplan transition-colors hover:bg-marconi hover:text-white"
+                    >
+                      {t.name}
+                    </Link>
+                  ))}
+                </div>
+              )}
 
               {/* ——— Crédito da fonte ———
                   Fica em campo próprio (sourceUrl/sourceName) e é montado aqui,

@@ -43,6 +43,7 @@ export default async function EditarFontePage({
             dateSelector: fonte.dateSelector,
             imageSelector: fonte.imageSelector,
             excerptSelector: fonte.excerptSelector,
+            categorySelector: fonte.categorySelector,
             contentSelector: fonte.contentSelector,
             isActive: fonte.isActive,
           }}

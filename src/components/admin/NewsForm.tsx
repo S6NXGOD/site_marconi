@@ -7,6 +7,7 @@ import ImageCropUploader from "./ImageCropUploader";
 import PublishDateField from "./PublishDateField";
 import SlugField from "./SlugField";
 import RichEditor from "./RichEditor";
+import TagField from "./TagField";
 import { autorDe, categoryOptions } from "@/lib/news";
 import type { NewsFormState } from "@/app/admin/actions";
 import type { NewsCategory } from "@prisma/client";
@@ -21,6 +22,8 @@ type NewsInitial = {
   isPublished: boolean;
   /** "yyyy-mm-dd" no fuso do Piauí */
   publishedAt: string;
+  /** nomes das tags de assunto já atribuídas */
+  tags: string[];
 };
 
 type Props = {
@@ -29,6 +32,8 @@ type Props = {
   submitLabel: string;
   /** domínio público, só para o preview do endereço */
   siteUrl?: string;
+  /** tags que já existem no sistema, para sugerir */
+  tagSuggestions?: string[];
 };
 
 const initialState: NewsFormState = { status: "idle" };
@@ -54,6 +59,7 @@ export default function NewsForm({
   initial,
   submitLabel,
   siteUrl,
+  tagSuggestions = [],
 }: Props) {
   const [state, formAction] = useFormState(action, initialState);
   // Título e categoria viram estado porque alimentam os previews do endereço
@@ -121,6 +127,13 @@ export default function NewsForm({
           </strong>
         </p>
       </div>
+
+      {/* Vertente (category) é o SETOR; a tag é o ASSUNTO — as duas convivem. */}
+      <TagField
+        name="tags"
+        defaultValue={initial?.tags}
+        suggestions={tagSuggestions}
+      />
 
       <div className="grid gap-6 sm:grid-cols-2">
         <PublishDateField name="publishedAt" defaultValue={initial?.publishedAt} />

@@ -63,17 +63,19 @@ function filtroDaBusca(q: string) {
 export default async function NoticiasPage({
   searchParams,
 }: {
-  searchParams: { cat?: string; q?: string };
+  searchParams: { cat?: string; q?: string; tag?: string };
 }) {
   const active = searchParams.cat && catMap[searchParams.cat] ? searchParams.cat : "todas";
   const category = catMap[active];
   const q = (searchParams.q ?? "").trim().slice(0, 80);
+  const tagSlug = (searchParams.tag ?? "").trim().slice(0, 60);
 
-  const [news, whatsapp] = await Promise.all([
+  const [news, whatsapp, tagAtual] = await Promise.all([
     prisma.news.findMany({
       where: {
         isPublished: true,
         ...(category ? { category } : {}),
+        ...(tagSlug ? { tags: { some: { slug: tagSlug } } } : {}),
         ...filtroDaBusca(q),
       },
       orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
@@ -89,6 +91,7 @@ export default async function NoticiasPage({
       },
     }),
     getWhatsappContacts(),
+    tagSlug ? prisma.tag.findUnique({ where: { slug: tagSlug }, select: { name: true } }) : null,
   ]);
 
   return (
@@ -112,6 +115,23 @@ export default async function NoticiasPage({
             </p>
 
             <NewsSearch defaultValue={q} cat={category ? active : undefined} />
+
+            {/* Filtrando por assunto (tag): mostra qual e um jeito de limpar. */}
+            {tagAtual && (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-marconi/15 py-1.5 pl-4 pr-2 text-sm text-white ring-1 ring-marconi/30">
+                <span className="text-marconi-light">Assunto:</span>
+                <strong className="font-semibold">{tagAtual.name}</strong>
+                <Link
+                  href="/noticias"
+                  aria-label="Limpar filtro de assunto"
+                  className="flex h-5 w-5 items-center justify-center rounded-full text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </Link>
+              </div>
+            )}
 
             {/* Filtros (links reais — sem JS) */}
             <div className="-mx-6 mt-4 overflow-x-auto px-6 pb-1 sm:mx-0 sm:px-0">

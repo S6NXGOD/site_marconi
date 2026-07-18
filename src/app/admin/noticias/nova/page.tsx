@@ -1,9 +1,12 @@
 import Link from "next/link";
 import { createNews } from "@/app/admin/actions";
 import { SITE_URL } from "@/lib/site";
+import { getTagSuggestions } from "@/lib/get-tags";
 import NewsForm from "@/components/admin/NewsForm";
 
-export default function NovaNoticiaPage() {
+export default async function NovaNoticiaPage() {
+  const tagSuggestions = await getTagSuggestions();
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
@@ -24,6 +27,7 @@ export default function NovaNoticiaPage() {
           action={createNews}
           submitLabel="Criar notícia"
           siteUrl={SITE_URL}
+          tagSuggestions={tagSuggestions}
         />
       </div>
     </div>

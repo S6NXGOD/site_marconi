@@ -20,6 +20,7 @@ export type SeletoresDetectados = {
   dateSelector: string;
   imageSelector: string;
   excerptSelector: string;
+  categorySelector: string;
   contentSelector: string;
   /** quantos itens o seletor encontrou — sinal de que deu certo */
   quantidade: number;
@@ -162,6 +163,24 @@ export function detectarListagem(
     }
   }
 
+  // Categoria/assunto: um rótulo curto (não data, não frase). Nomes comuns
+  // em portais BR: .subtitulo-noticia (Receita), .editoria, .categoria…
+  let categorySelector = "";
+  for (const s of [
+    ".subtitulo-noticia", ".editoria", ".categoria", ".category",
+    ".cat-links a", ".post-category", "[rel~='category']", ".assunto", ".tag",
+  ]) {
+    const e = it.find(s).first();
+    const t = e.text().trim();
+    if (
+      e.length && t.length >= 2 && t.length <= 40 &&
+      !RE_DATA.test(t) && !/^\d+$/.test(t)
+    ) {
+      categorySelector = s;
+      break;
+    }
+  }
+
   return {
     itemSelector,
     titleSelector,
@@ -169,6 +188,7 @@ export function detectarListagem(
     dateSelector,
     imageSelector,
     excerptSelector,
+    categorySelector,
     contentSelector: "",
     quantidade: itens.length,
   };

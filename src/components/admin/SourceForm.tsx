@@ -17,6 +17,7 @@ type SourceInitial = {
   dateSelector: string | null;
   imageSelector: string | null;
   excerptSelector: string | null;
+  categorySelector: string | null;
   contentSelector: string | null;
   isActive: boolean;
 };
@@ -43,6 +44,7 @@ const PRESET_TCE: Campos = {
   dateSelector: ".date",
   imageSelector: ".thumbnail img",
   excerptSelector: ".post-content p",
+  categorySelector: "",
   contentSelector: ".the_post.post_content",
 };
 
@@ -81,6 +83,7 @@ export default function SourceForm({ action, initial, submitLabel }: Props) {
     dateSelector: initial?.dateSelector ?? "",
     imageSelector: initial?.imageSelector ?? "",
     excerptSelector: initial?.excerptSelector ?? "",
+    categorySelector: initial?.categorySelector ?? "",
     contentSelector: initial?.contentSelector ?? "",
   });
 
@@ -128,6 +131,7 @@ export default function SourceForm({ action, initial, submitLabel }: Props) {
         dateSelector: data.dateSelector ?? "",
         imageSelector: data.imageSelector ?? "",
         excerptSelector: data.excerptSelector ?? "",
+        categorySelector: data.categorySelector ?? "",
         contentSelector: data.contentSelector ?? "",
       }));
       setDetectou(data.quantidade ?? 0);
@@ -339,19 +343,37 @@ export default function SourceForm({ action, initial, submitLabel }: Props) {
             ))}
           </div>
 
-          <div>
-            <label htmlFor="excerptSelector" className="mb-1.5 block text-xs font-medium text-conplan">
-              Resumo na listagem
-            </label>
-            <input
-              id="excerptSelector"
-              name="excerptSelector"
-              type="text"
-              value={campos.excerptSelector ?? ""}
-              onChange={(e) => set("excerptSelector", e.target.value)}
-              placeholder=".post-content p"
-              className={monoClass}
-            />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="excerptSelector" className="mb-1.5 block text-xs font-medium text-conplan">
+                Resumo na listagem
+              </label>
+              <input
+                id="excerptSelector"
+                name="excerptSelector"
+                type="text"
+                value={campos.excerptSelector ?? ""}
+                onChange={(e) => set("excerptSelector", e.target.value)}
+                placeholder=".post-content p"
+                className={monoClass}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="categorySelector" className="mb-1.5 block text-xs font-medium text-conplan">
+                Categoria/assunto{" "}
+                <span className="font-normal text-slate-400">(vira tag)</span>
+              </label>
+              <input
+                id="categorySelector"
+                name="categorySelector"
+                type="text"
+                value={campos.categorySelector ?? ""}
+                onChange={(e) => set("categorySelector", e.target.value)}
+                placeholder=".subtitulo-noticia"
+                className={monoClass}
+              />
+            </div>
           </div>
 
           <div>
