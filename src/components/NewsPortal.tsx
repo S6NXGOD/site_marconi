@@ -244,20 +244,28 @@ export default function NewsPortal({
         </div>
       </section>
 
-      {/* ——— MAIS NOTÍCIAS + ALERTAS ———
-          Sem "mais notícias" a coluna some e os alertas ocupam a seção,
-          em vez de deixar uma caixa vazia ao lado. */}
-      <section className="bg-cloud py-14 sm:py-20">
-        <div
-          className={`section-shell grid gap-10 lg:gap-12 ${
-            latest.length > 0 ? "lg:grid-cols-[1fr_360px]" : "lg:max-w-3xl"
-          }`}
-        >
-          {/* Carrossel — os itens já entram sem os destaques acima. */}
-          {latest.length > 0 && <NewsCarousel items={latest} />}
+      {/* ——— MAIS NOTÍCIAS ——— em largura total.
+          O carrossel (scroll horizontal) e o painel de alertas (vertical) não
+          convivem numa mesma linha: o trilho inflava a coluna e empurrava o
+          painel para fora. Cada um vira um bloco próprio. */}
+      {latest.length > 0 && (
+        <section className="bg-cloud pt-14 sm:pt-20">
+          <div className="section-shell">
+            <NewsCarousel items={latest} />
+          </div>
+        </section>
+      )}
 
-          {/* Alertas */}
-          <AlertsPanel alerts={alerts} encerrados={encerrados} />
+      {/* ——— ALERTAS & PRAZOS ——— cartão centrado, seu próprio bloco. */}
+      <section
+        className={`bg-cloud pb-14 sm:pb-20 ${
+          latest.length > 0 ? "pt-12 sm:pt-16" : "pt-14 sm:pt-20"
+        }`}
+      >
+        <div className="section-shell">
+          <div className="mx-auto max-w-3xl">
+            <AlertsPanel alerts={alerts} encerrados={encerrados} />
+          </div>
         </div>
       </section>
     </>

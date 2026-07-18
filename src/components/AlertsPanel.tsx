@@ -67,7 +67,7 @@ export default function AlertsPanel({
   ];
 
   return (
-    <aside id="alertas" className="lg:sticky lg:top-28 lg:self-start">
+    <aside id="alertas" className="scroll-mt-24">
       <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
         {/* ——— Cabeçalho ——— */}
         <div className="bg-conplan px-5 pb-3 pt-5 sm:px-6">
