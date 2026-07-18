@@ -89,10 +89,22 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
             aria-label="Prazos desta semana"
-            className="w-[calc(100vw-2rem)] max-w-[21.5rem] overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl"
+            className={`w-[calc(100vw-2rem)] max-w-[21.5rem] overflow-hidden rounded-2xl border bg-white shadow-2xl ${
+              alertaMaximo ? "border-red-200 ring-1 ring-red-100" : "border-slate-200"
+            }`}
           >
+            {/* Faixa de topo — vermelha quando há prazo hoje/amanhã. */}
+            <div
+              aria-hidden
+              className={`h-1 w-full ${alertaMaximo ? "bg-red-500" : "bg-marconi"}`}
+            />
+
             {/* Cabeçalho */}
-            <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3">
+            <div
+              className={`flex items-center gap-2.5 border-b px-4 py-3 ${
+                alertaMaximo ? "border-red-100 bg-red-50/50" : "border-slate-100"
+              }`}
+            >
               {/* ícone — sino balança quando há prazo hoje/amanhã; senão, só o
                   anel pulsante discreto */}
               <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
@@ -226,7 +238,11 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
               type="button"
               onClick={() => setOpen(true)}
               aria-label={`Ver ${total} prazo(s) desta semana`}
-              className="relative flex animate-breathe items-center gap-2 rounded-full border border-slate-200 bg-white py-2 pl-3 pr-3.5 shadow-lg transition-colors hover:border-marconi/40"
+              className={`relative flex animate-breathe items-center gap-2 rounded-full border bg-white py-2 pl-2.5 pr-4 shadow-lg transition-colors ${
+                alertaMaximo
+                  ? "border-red-200 ring-1 ring-red-100 hover:border-red-300"
+                  : "border-slate-200 hover:border-marconi/40"
+              }`}
             >
               {/* ponto de notificação pulsante */}
               <span aria-hidden className="absolute -right-0.5 -top-0.5 flex h-2.5 w-2.5">
@@ -235,19 +251,26 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
               </span>
 
               <span
-                className={`relative flex h-6 w-6 items-center justify-center rounded-md ${
+                className={`relative flex h-7 w-7 items-center justify-center rounded-full ${
                   alertaMaximo ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
                 }`}
               >
                 <svg
-                  width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
                   className={alertaMaximo ? "origin-top animate-sino" : ""}
                 >
                   <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
               </span>
-              <span className="text-xs font-semibold text-conplan">
-                {total} {total === 1 ? "prazo" : "prazos"} esta semana
+              <span className="flex flex-col items-start leading-tight">
+                <span className="text-xs font-semibold text-conplan">
+                  {total} {total === 1 ? "prazo" : "prazos"} esta semana
+                </span>
+                {alertaMaximo && (
+                  <span className="text-[10px] font-semibold text-red-600">
+                    vence em breve
+                  </span>
+                )}
               </span>
             </button>
           </motion.div>

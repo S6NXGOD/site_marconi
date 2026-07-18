@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import type { NewsCategory } from "@prisma/client";
-import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
+import { categoryLabels, categoryBadgeClasses, isUrgent } from "@/lib/news";
 import NewsCover from "./NewsCover";
 import NewsCarousel from "./NewsCarousel";
 import AlertsPanel, { type AlertItem } from "./AlertsPanel";
@@ -76,6 +76,9 @@ export default function NewsPortal({
     const base = filter === "ALL" ? ultimas : ultimas.filter((n) => n.category === filter);
     return base.filter((n) => !emDestaque.has(n.id));
   }, [ultimas, filter, featured, side]);
+
+  // Prazos que vencem em até 7 dias — alimenta o destaque da intro.
+  const urgentesHome = useMemo(() => alerts.filter((a) => isUrgent(a.date)).length, [alerts]);
 
   // Site sem nenhuma notícia publicada (ex.: recém no ar). Nesse caso os
   // filtros não fazem sentido e a seção "Mais notícias" some — nada de
@@ -256,16 +259,57 @@ export default function NewsPortal({
         </section>
       )}
 
-      {/* ——— ALERTAS & PRAZOS ——— cartão centrado, seu próprio bloco. */}
+      {/* ——— ALERTAS & PRAZOS ——— intro + painel interativo.
+          Dois blocos: à esquerda o contexto (o que é, por que importa), à
+          direita o painel com busca e abas. Sem a intro, o cartão parecia
+          "solto" no meio da página. */}
       <section
-        className={`bg-cloud pb-14 sm:pb-20 ${
+        id="alertas-prazos"
+        className={`scroll-mt-24 bg-cloud pb-16 sm:pb-24 ${
           latest.length > 0 ? "pt-12 sm:pt-16" : "pt-14 sm:pt-20"
         }`}
       >
-        <div className="section-shell">
-          <div className="mx-auto max-w-3xl">
-            <AlertsPanel alerts={alerts} encerrados={encerrados} />
+        <div className="section-shell grid items-start gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-12">
+          {/* Intro */}
+          <div className="lg:sticky lg:top-28">
+            <span className="kicker text-marconi">
+              <span className="h-px w-6 bg-marconi/40" />
+              Fique em dia
+            </span>
+            <h2 className="mt-3 font-serif text-3xl font-semibold text-conplan sm:text-4xl">
+              Alertas &amp; Prazos
+            </h2>
+            <p className="mt-4 max-w-md text-base leading-relaxed text-slate-600">
+              Os vencimentos fiscais e as obrigações que impactam prefeituras e
+              empresas, sempre à mão. Pesquise pelo imposto ou acompanhe o que
+              vence nos próximos dias.
+            </p>
+
+            {urgentesHome > 0 && (
+              <div className="mt-6 inline-flex items-center gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span aria-hidden className="absolute inline-flex h-full w-full rounded-full bg-red-400 animate-soft-ping" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+                </span>
+                <p className="text-sm font-medium text-red-700">
+                  {urgentesHome} {urgentesHome === 1 ? "prazo vence" : "prazos vencem"} nesta semana
+                </p>
+              </div>
+            )}
+
+            <a
+              href="/#contato"
+              className="mt-6 inline-flex items-center gap-2 text-sm font-semibold text-marconi transition-colors hover:text-marconi-dark"
+            >
+              Precisa de ajuda com um prazo? Fale conosco
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </a>
           </div>
+
+          {/* Painel */}
+          <AlertsPanel alerts={alerts} encerrados={encerrados} />
         </div>
       </section>
     </>
