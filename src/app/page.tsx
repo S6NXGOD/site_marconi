@@ -25,28 +25,42 @@ export const dynamic = "force-dynamic";
  * banco falhar — as seções mostram estado vazio ou somem. Publicar notícia
  * fictícia num site institucional seria pior do que não mostrar nada.
  */
+const selectNews = {
+  id: true,
+  title: true,
+  slug: true,
+  excerpt: true,
+  content: true,
+  coverImage: true,
+  category: true,
+  publishedAt: true,
+} as const;
+
 async function getPortalData(): Promise<{
   news: NewsItem[];
+  ultimas: NewsItem[];
   alerts: AlertItem[];
   encerrados: AlertItem[];
   approvals: ApprovalItem[];
 }> {
   try {
-    const [news, alerts, encerrados, approvals] = await Promise.all([
+    const [news, ultimas, alerts, encerrados, approvals] = await Promise.all([
+      // Destaques: pela data EDITORIAL (publishedAt) — a manchete é a mais
+      // recente do ponto de vista jornalístico.
       prisma.news.findMany({
         where: { isPublished: true },
         orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
         take: 9,
-        select: {
-          id: true,
-          title: true,
-          slug: true,
-          excerpt: true,
-          content: true,
-          coverImage: true,
-          category: true,
-          publishedAt: true,
-        },
+        select: selectNews,
+      }),
+      // "Mais notícias": pela ordem de CADASTRO (createdAt) — as últimas que
+      // entraram no sistema, independentemente da data editorial. É o que faz
+      // esta lista não depender da grade de destaques.
+      prisma.news.findMany({
+        where: { isPublished: true },
+        orderBy: { createdAt: "desc" },
+        take: 12,
+        select: selectNews,
       }),
       prisma.alert.findMany({
         // Só prazos ativos e ainda não vencidos (inclui os que vencem hoje).
@@ -91,6 +105,7 @@ async function getPortalData(): Promise<{
 
     return {
       news,
+      ultimas,
       alerts,
       encerrados,
       // O card É a publicação incorporada: sem link válido não há o que exibir.
@@ -100,12 +115,12 @@ async function getPortalData(): Promise<{
   } catch (error) {
     // O site continua no ar com as seções institucionais; o portal fica vazio.
     console.error("[home] falha ao carregar dados do portal:", error);
-    return { news: [], alerts: [], encerrados: [], approvals: [] };
+    return { news: [], ultimas: [], alerts: [], encerrados: [], approvals: [] };
   }
 }
 
 export default async function Home() {
-  const [{ news, alerts, encerrados, approvals }, whatsapp, areas] = await Promise.all([
+  const [{ news, ultimas, alerts, encerrados, approvals }, whatsapp, areas] = await Promise.all([
     getPortalData(),
     getWhatsappContacts(),
     getBusinessAreas(),
@@ -116,7 +131,7 @@ export default async function Home() {
       <Header />
       <main>
         {/* Topo em formato de Portal: notícias + alertas/prazos */}
-        <NewsPortal news={news} alerts={alerts} encerrados={encerrados} />
+        <NewsPortal news={news} ultimas={ultimas} alerts={alerts} encerrados={encerrados} />
 
         {/* Apresentação unificada das duas empresas */}
         <BusinessAreas areas={areas} />

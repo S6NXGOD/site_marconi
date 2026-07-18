@@ -52,11 +52,22 @@ const config: Config = {
           "0%, 100%": { transform: "scale(1)" },
           "50%": { transform: "scale(1.035)" },
         },
+        // Sino balançando: usado só quando há prazo HOJE ou AMANHÃ. Toca em
+        // rajadas (a maior parte do ciclo fica parado) para alertar sem cansar.
+        sino: {
+          "0%, 82%, 100%": { transform: "rotate(0deg)" },
+          "85%": { transform: "rotate(11deg)" },
+          "88%": { transform: "rotate(-9deg)" },
+          "91%": { transform: "rotate(7deg)" },
+          "94%": { transform: "rotate(-5deg)" },
+          "97%": { transform: "rotate(2deg)" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.6s ease-out both",
         "soft-ping": "soft-ping 2.6s cubic-bezier(0, 0, 0.2, 1) infinite",
         breathe: "breathe 3.2s ease-in-out infinite",
+        sino: "sino 2.8s ease-in-out infinite",
       },
     },
   },

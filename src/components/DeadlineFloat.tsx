@@ -1,6 +1,6 @@
 "use client";
 
-import { formatarDiaPrazo } from "@/lib/datas";
+import { diasAte, formatarDiaPrazo } from "@/lib/datas";
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
@@ -14,9 +14,9 @@ import {
 import type { AlertItem } from "./AlertsPanel";
 import ExpandableText from "./ExpandableText";
 
-// Guarda a assinatura dos prazos que a pessoa JÁ VIU (não "que ela fechou").
-// É o que impede o aviso de reabrir a cada visita.
-const STORAGE_KEY = "mn:prazos-vistos";
+// Marca que a pessoa fechou o aviso NESTA sessão do navegador. Assim ele abre
+// sozinho ao entrar no site, mas não volta a abrir se ela fechar e navegar.
+const SESSION_KEY = "mn:prazos-fechado";
 
 
 const toneChip = {
@@ -26,59 +26,44 @@ const toneChip = {
 } as const;
 
 /**
- * Aviso flutuante e discreto dos prazos que vencem em até 7 dias.
- * - Fechável: ao fechar, recolhe para uma pílula (não some de vez).
- * - Lembra a escolha por conjunto de prazos: se surgir um prazo novo,
- *   volta a abrir sozinho.
+ * Aviso flutuante dos prazos que vencem em até 7 dias.
+ * - Abre sozinho ao entrar no site (uma vez por sessão do navegador).
+ * - Quando há prazo HOJE ou AMANHÃ, o sino balança para alertar.
+ * - Fechável: recolhe para uma pílula, não some de vez.
  * - Canto inferior ESQUERDO (o WhatsApp fica no direito).
  */
 export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
   const urgent = useMemo(() => alerts.filter((a) => isUrgent(a.date)), [alerts]);
   const groups = useMemo(() => groupByDay(urgent), [urgent]);
 
-  // Assinatura do conjunto atual de prazos.
-  const signature = useMemo(
-    () =>
-      urgent
-        .map((a) => a.id)
-        .sort()
-        .join(","),
+  // Há prazo vencendo HOJE ou AMANHÃ? É o que liga a animação de alerta.
+  const alertaMaximo = useMemo(
+    () => urgent.some((a) => diasAte(a.date) <= 1),
     [urgent]
   );
 
   /**
-   * Começa RECOLHIDO — igual no servidor e no cliente (sem hydration mismatch
-   * e sem o "flash" de abrir e fechar em quem já viu).
-   * O efeito abre sozinho só na primeira vez que a pessoa vê estes prazos.
+   * Começa RECOLHIDO — igual no servidor e no cliente (sem hydration mismatch).
+   * O efeito abre sozinho ao entrar no site, a menos que a pessoa já tenha
+   * fechado nesta sessão.
    */
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!signature) return;
+    if (urgent.length === 0) return;
 
-    let visto: string | null = null;
+    let fechado = false;
     try {
-      visto = window.localStorage.getItem(STORAGE_KEY);
+      fechado = window.sessionStorage.getItem(SESSION_KEY) === "1";
     } catch {
-      /* localStorage indisponível (aba anônima, etc.) */
+      /* sessionStorage indisponível (aba anônima, etc.) */
     }
+    if (fechado) return;
 
-    // Já viu exatamente estes prazos? Fica na pílula e não incomoda.
-    if (visto === signature) return;
-
-    // Primeira visita — ou surgiram prazos NOVOS: abre e marca como visto,
-    // então nas próximas visitas ele não abre de novo sozinho.
-    const t = setTimeout(() => {
-      setOpen(true);
-      try {
-        window.localStorage.setItem(STORAGE_KEY, signature);
-      } catch {
-        /* ignora */
-      }
-    }, 900); // deixa a página assentar antes de aparecer
-
+    // Deixa a página assentar antes de aparecer.
+    const t = setTimeout(() => setOpen(true), 700);
     return () => clearTimeout(t);
-  }, [signature]);
+  }, [urgent.length]);
 
   if (urgent.length === 0) return null;
 
@@ -86,9 +71,8 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
 
   function collapse() {
     setOpen(false);
-    // Garante o registro mesmo se o usuário fechar antes do efeito rodar.
     try {
-      window.localStorage.setItem(STORAGE_KEY, signature);
+      window.sessionStorage.setItem(SESSION_KEY, "1");
     } catch {
       /* ignora */
     }
@@ -109,16 +93,25 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
           >
             {/* Cabeçalho */}
             <div className="flex items-center gap-2.5 border-b border-slate-100 px-4 py-3">
-              {/* ícone com anel pulsante discreto */}
+              {/* ícone — sino balança quando há prazo hoje/amanhã; senão, só o
+                  anel pulsante discreto */}
               <span className="relative flex h-7 w-7 shrink-0 items-center justify-center">
                 <span
                   aria-hidden
-                  className="absolute inset-0 rounded-lg bg-amber-400/50 animate-soft-ping"
+                  className={`absolute inset-0 rounded-lg animate-soft-ping ${
+                    alertaMaximo ? "bg-red-400/60" : "bg-amber-400/50"
+                  }`}
                 />
-                <span className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-amber-50 text-amber-600">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="3" y="5" width="18" height="16" rx="2" />
-                    <path d="M16 3v4M8 3v4M3 11h18M12 15v3" />
+                <span
+                  className={`relative flex h-7 w-7 items-center justify-center rounded-lg ${
+                    alertaMaximo ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                  }`}
+                >
+                  <svg
+                    width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    className={alertaMaximo ? "origin-top animate-sino" : ""}
+                  >
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
                   </svg>
                 </span>
               </span>
@@ -127,8 +120,10 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
                 <h2 className="text-[13px] font-semibold leading-tight text-conplan">
                   Prazos desta semana
                 </h2>
-                <p className="text-[11px] text-slate-400">
-                  {total} {total === 1 ? "prazo" : "prazos"} a vencer
+                <p className={`text-[11px] ${alertaMaximo ? "font-medium text-red-600" : "text-slate-400"}`}>
+                  {alertaMaximo
+                    ? "Há prazo vencendo em breve"
+                    : `${total} ${total === 1 ? "prazo" : "prazos"} a vencer`}
                 </p>
               </div>
 
@@ -239,10 +234,16 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
               </span>
 
-              <span className="relative flex h-6 w-6 items-center justify-center rounded-md bg-amber-50 text-amber-600">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="3" y="5" width="18" height="16" rx="2" />
-                  <path d="M16 3v4M8 3v4M3 11h18" />
+              <span
+                className={`relative flex h-6 w-6 items-center justify-center rounded-md ${
+                  alertaMaximo ? "bg-red-50 text-red-600" : "bg-amber-50 text-amber-600"
+                }`}
+              >
+                <svg
+                  width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                  className={alertaMaximo ? "origin-top animate-sino" : ""}
+                >
+                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
                 </svg>
               </span>
               <span className="text-xs font-semibold text-conplan">

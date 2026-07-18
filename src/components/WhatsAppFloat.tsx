@@ -30,6 +30,10 @@ function waLink(phone: string, message: string) {
 // Atendente exibido na mensagem de boas-vindas.
 const ATTENDANT = { name: "Recepção" };
 
+// Marca que a pessoa fechou o atendimento NESTA sessão. Abre sozinho ao entrar
+// no site, mas não reabre depois que ela minimiza e navega.
+const SESSION_KEY = "mn:whatsapp-fechado";
+
 export default function WhatsAppFloat({
   contacts,
 }: {
@@ -38,15 +42,44 @@ export default function WhatsAppFloat({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // Abre sozinho ao entrar no site, uma vez por sessão. Começa fechado no
+  // servidor e no cliente (sem hydration mismatch); o efeito abre depois.
+  useEffect(() => {
+    if (contacts.length === 0) return;
+
+    let fechado = false;
+    try {
+      fechado = window.sessionStorage.getItem(SESSION_KEY) === "1";
+    } catch {
+      /* sessionStorage indisponível */
+    }
+    if (fechado) return;
+
+    // Um respiro depois dos prazos, para os dois não pularem juntos na cara.
+    const t = setTimeout(() => setOpen(true), 1400);
+    return () => clearTimeout(t);
+  }, [contacts.length]);
+
+  // Fechar de propósito é o que grava a sessão — não a montagem inicial, senão
+  // o auto-abrir se envenenaria antes mesmo de rodar.
+  function fechar() {
+    setOpen(false);
+    try {
+      window.sessionStorage.setItem(SESSION_KEY, "1");
+    } catch {
+      /* ignora */
+    }
+  }
+
   // Fecha com Esc e ao clicar fora.
   useEffect(() => {
     if (!open) return;
 
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
+      if (e.key === "Escape") fechar();
     };
     const onClick = (e: MouseEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(e.target as Node)) fechar();
     };
 
     document.addEventListener("keydown", onKey);
@@ -105,7 +138,7 @@ export default function WhatsAppFloat({
 
               <button
                 type="button"
-                onClick={() => setOpen(false)}
+                onClick={fechar}
                 aria-label="Minimizar atendimento"
                 className="-mr-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-white/70 transition-colors hover:bg-white/10 hover:text-white"
               >
@@ -137,7 +170,7 @@ export default function WhatsAppFloat({
                       href={waLink(o.phone, o.message)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      onClick={() => setOpen(false)}
+                      onClick={fechar}
                       className="flex items-center gap-3 rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-md"
                     >
                       <span
@@ -166,7 +199,7 @@ export default function WhatsAppFloat({
       {/* ——— Botão flutuante ——— */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => (open ? fechar() : setOpen(true))}
         aria-expanded={open}
         aria-label={open ? "Fechar atendimento" : "Abrir atendimento pelo WhatsApp"}
         className={`relative flex h-14 w-14 items-center justify-center rounded-full shadow-lg transition-colors duration-200 active:scale-95 ${

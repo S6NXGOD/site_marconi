@@ -49,10 +49,13 @@ function Badge({ category }: { category: NewsCategory }) {
 
 export default function NewsPortal({
   news,
+  ultimas,
   alerts,
   encerrados,
 }: {
   news: NewsItem[];
+  /** últimas cadastradas (createdAt) — alimenta "Mais notícias" */
+  ultimas: NewsItem[];
   alerts: AlertItem[];
   encerrados: AlertItem[];
 }) {
@@ -65,8 +68,14 @@ export default function NewsPortal({
 
   const featured = visible[0];
   const side = visible.slice(1, 3);
-  // Tudo que sobrou dos destaques — o carrossel rola, não precisa cortar em 6.
-  const latest = visible.slice(3);
+
+  // "Mais notícias" vem das ÚLTIMAS CADASTRADAS, não do que sobrou da grade de
+  // destaques. Só tira o que já está em destaque agora, para não repetir.
+  const latest = useMemo(() => {
+    const emDestaque = new Set([featured?.id, ...side.map((s) => s.id)]);
+    const base = filter === "ALL" ? ultimas : ultimas.filter((n) => n.category === filter);
+    return base.filter((n) => !emDestaque.has(n.id));
+  }, [ultimas, filter, featured, side]);
 
   // Site sem nenhuma notícia publicada (ex.: recém no ar). Nesse caso os
   // filtros não fazem sentido e a seção "Mais notícias" some — nada de
