@@ -13,6 +13,7 @@ import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
 import { dataDeInput } from "@/lib/datas";
 import { autorDe } from "@/lib/news";
 import { resumoInteligente } from "@/lib/resumo";
+import { markupParaHtml } from "@/lib/markup-html";
 
 export const runtime = "nodejs";
 // Cada item baixa a página da matéria e a imagem. Com vários selecionados,
@@ -203,8 +204,9 @@ export async function POST(request: Request) {
           // resolve colisão. Sem isto, o título inteiro do órgão vira slug —
           // saíam endereços de 114 caracteres.
           slug: await slugUnico(slugDaNoticia("", title)),
+          // Resumo do corpo em MARCAÇÃO (texto limpo); conteúdo já em HTML.
           excerpt: resumoDaMateria(corpoFinal),
-          content: corpoFinal,
+          content: markupParaHtml(corpoFinal),
           coverImage: capa,
           category: fonte.category,
           author: autorDe(fonte.category),

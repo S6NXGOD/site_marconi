@@ -6,6 +6,7 @@ import { useFormState, useFormStatus } from "react-dom";
 import ImageCropUploader from "./ImageCropUploader";
 import PublishDateField from "./PublishDateField";
 import SlugField from "./SlugField";
+import RichEditor from "./RichEditor";
 import { autorDe, categoryOptions } from "@/lib/news";
 import type { NewsFormState } from "@/app/admin/actions";
 import type { NewsCategory } from "@prisma/client";
@@ -162,33 +163,17 @@ export default function NewsForm({
       </div>
 
       <div>
-        <label htmlFor="content" className="mb-1.5 block text-sm font-medium text-conplan">
-          Conteúdo{" "}
-          <span className="font-normal text-slate-400">
-            (deixe uma linha em branco para separar parágrafos)
-          </span>
+        <label className="mb-1.5 block text-sm font-medium text-conplan">
+          Conteúdo
         </label>
-        <textarea
-          id="content"
-          name="content"
-          rows={8}
-          defaultValue={initial?.content}
-          placeholder="Escreva o conteúdo da notícia..."
-          className={`${fieldClass} resize-y`}
-        />
+        <p className="mb-2 text-xs text-slate-400">
+          Corpo principal. Parágrafos, espaçamento, imagens no meio do texto e
+          links são preservados.
+        </p>
+        <RichEditor name="content" defaultValue={initial?.content} />
         {state.errors?.content && (
           <p className="mt-1 text-xs text-red-600">{state.errors.content}</p>
         )}
-        {/* Marcação simples — o mesmo formato que a importação gera. */}
-        <p className="mt-1.5 text-xs text-slate-400">
-          Formatação:{" "}
-          <code className="rounded bg-slate-100 px-1 text-slate-600">## Subtítulo</code>{" "}
-          ·{" "}
-          <code className="rounded bg-slate-100 px-1 text-slate-600">- item de lista</code>{" "}
-          ·{" "}
-          <code className="rounded bg-slate-100 px-1 text-slate-600">[texto](link)</code>{" "}
-          · <code className="rounded bg-slate-100 px-1 text-slate-600">![](imagem)</code>
-        </p>
       </div>
 
       <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-cloud px-4 py-3">

@@ -1,6 +1,7 @@
 import { PrismaClient, Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import { normalizarCapas } from "./normaliza-capas";
+import { migrarConteudoParaHtml } from "./migra-conteudo-html";
 
 const prisma = new PrismaClient();
 
@@ -126,6 +127,7 @@ async function main() {
   // Antes do bloco do admin de propósito: ele retorna cedo quando já existe
   // usuário, que é justamente o caso de produção.
   await normalizarCapas(prisma);
+  await migrarConteudoParaHtml(prisma);
 
   const email = (process.env.ADMIN_EMAIL ?? "").trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD ?? "";

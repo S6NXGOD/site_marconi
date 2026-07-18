@@ -15,6 +15,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "db:seed": "tsx prisma/seed.ts",
     "db:capas": "tsx prisma/normaliza-capas.ts",
+    "db:html": "tsx prisma/migra-conteudo-html.ts",
     "db:studio": "prisma studio",
     "start:migrate": "prisma migrate deploy && tsx prisma/seed.ts && next start"
   },
@@ -24,6 +25,14 @@
   "dependencies": {
     "@prisma/client": "^5.19.1",
     "@radix-ui/react-tabs": "^1.1.17",
+    "@tiptap/extension-image": "^2.27.2",
+    "@tiptap/extension-link": "^2.27.2",
+    "@tiptap/extension-placeholder": "^2.27.2",
+    "@tiptap/extension-underline": "^2.27.2",
+    "@tiptap/extension-youtube": "^2.27.2",
+    "@tiptap/pm": "^2.27.2",
+    "@tiptap/react": "^2.27.2",
+    "@tiptap/starter-kit": "^2.27.2",
     "bcryptjs": "^3.0.3",
     "cheerio": "^1.2.0",
     "framer-motion": "^11.5.4",
@@ -33,6 +42,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-easy-crop": "^6.2.2",
+    "sanitize-html": "^2.17.6",
     "sharp": "^0.35.3",
     "tsx": "^4.19.1"
   },
@@ -41,6 +51,7 @@
     "@types/node": "^20.16.5",
     "@types/react": "^18.3.7",
     "@types/react-dom": "^18.3.0",
+    "@types/sanitize-html": "^2.16.1",
     "autoprefixer": "^10.4.20",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.12",

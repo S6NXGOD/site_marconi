@@ -91,6 +91,79 @@
   }
 }
 
+/* ——— Editor do painel (TipTap) e corpo da notícia no site ———
+   Mesma folha para os dois, para o que se edita ser igual ao que se publica. */
+.prose-editor,
+.conteudo-noticia {
+  @apply text-base leading-[1.85] text-slate-700;
+}
+.prose-editor > * + *,
+.conteudo-noticia > * + * {
+  @apply mt-5;
+}
+.prose-editor h2,
+.conteudo-noticia h2 {
+  @apply mt-8 font-serif text-xl font-semibold text-conplan sm:text-2xl;
+}
+.prose-editor h3,
+.conteudo-noticia h3 {
+  @apply mt-6 font-serif text-lg font-semibold text-conplan;
+}
+.prose-editor p,
+.conteudo-noticia p {
+  @apply text-base leading-[1.85] sm:text-[17px];
+}
+.prose-editor a,
+.conteudo-noticia a {
+  @apply font-medium text-marconi underline decoration-marconi/40 underline-offset-2 transition-colors hover:decoration-marconi;
+}
+.prose-editor ul,
+.conteudo-noticia ul {
+  @apply ml-1 list-none space-y-2;
+}
+.prose-editor ul > li,
+.conteudo-noticia ul > li {
+  @apply relative pl-5;
+}
+.prose-editor ul > li::before,
+.conteudo-noticia ul > li::before {
+  content: "";
+  @apply absolute left-0 top-[0.7em] h-1.5 w-1.5 rounded-full bg-marconi;
+}
+.prose-editor ol,
+.conteudo-noticia ol {
+  @apply ml-5 list-decimal space-y-2;
+}
+.prose-editor blockquote,
+.conteudo-noticia blockquote {
+  @apply border-l-4 border-marconi/40 pl-4 italic text-slate-600;
+}
+.prose-editor img,
+.conteudo-noticia img {
+  @apply mx-auto w-full rounded-2xl;
+}
+.prose-editor figure,
+.conteudo-noticia figure {
+  @apply my-2;
+}
+.prose-editor figcaption,
+.conteudo-noticia figcaption {
+  @apply mt-2 text-center text-xs not-italic text-slate-500;
+}
+/* Vídeo (iframe) sempre 16:9 e responsivo. */
+.prose-editor :where(iframe, div[data-youtube-video]),
+.conteudo-noticia iframe {
+  @apply my-2 aspect-video h-auto w-full overflow-hidden rounded-2xl;
+}
+.conteudo-noticia iframe {
+  @apply block;
+}
+/* Placeholder do editor vazio. */
+.prose-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-left h-0 text-slate-400;
+}
+
 /* Realce sutil de seleção de texto */
 ::selection {
   background-color: #b8942e;

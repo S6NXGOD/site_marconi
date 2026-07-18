@@ -1,6 +1,27 @@
 import { semMarcacao } from "./texto-rico";
 
 /**
+ * Texto puro a partir de HTML OU da marcação antiga.
+ *
+ * Regex, e não sanitize-html, de propósito: isto roda também em componentes
+ * client (os cards), e sanitize-html é lib de servidor. Aqui o objetivo é só
+ * texto para exibir — o React escapa o resultado, então uma tag que escape do
+ * regex vira texto, nunca script.
+ */
+function paraTextoSimples(s: string): string {
+  return semMarcacao(
+    s
+      .replace(/<[^>]*>/g, " ") // tags fora
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+  );
+}
+
+/**
  * Resumo curto e COMPLETO de um texto.
  *
  * O problema que resolve: antes o resumo era um corte cru nos primeiros ~200
@@ -13,7 +34,7 @@ import { semMarcacao } from "./texto-rico";
  * um "…" — e ainda assim numa fronteira de palavra.
  */
 export function resumoInteligente(texto: string, max = 220): string {
-  const limpo = semMarcacao(texto).replace(/\s+/g, " ").trim();
+  const limpo = paraTextoSimples(texto).replace(/\s+/g, " ").trim();
   if (limpo.length <= max) return limpo;
 
   // Fim de frase = . ! ? seguido de espaço ou fim do texto. Mantém o ponto.
@@ -75,7 +96,7 @@ export function resumoRepeteCorpo(
   if (!excerpt) return false;
 
   const normal = (s: string) =>
-    semMarcacao(s)
+    paraTextoSimples(s)
       .toLowerCase()
       .replace(/\s+/g, " ")
       .replace(/[^0-9a-zà-ú ]/gi, "")

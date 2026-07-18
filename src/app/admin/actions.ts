@@ -7,6 +7,7 @@ import { NewsCategory, AlertCategory, LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
+import { sanitizarConteudo, htmlParaTexto } from "@/lib/sanitize";
 import { autorDe } from "@/lib/news";
 import { dataDeInput, inputDeData } from "@/lib/datas";
 import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
@@ -177,7 +178,9 @@ function parseNewsForm(formData: FormData) {
   return {
     title: String(formData.get("title") ?? "").trim(),
     excerpt: normalizarQuebras(String(formData.get("excerpt") ?? "")).trim(),
-    content: normalizarQuebras(String(formData.get("content") ?? "")).trim(),
+    // O conteúdo vem do editor como HTML e é sanitizado ANTES de qualquer
+    // gravação: a allowlist é a barreira contra XSS, não o editor.
+    content: sanitizarConteudo(String(formData.get("content") ?? "")),
     category: String(formData.get("category") ?? ""),
     coverImage: String(formData.get("coverImage") ?? "").trim(),
     slugInput: String(formData.get("slug") ?? "").trim(),
@@ -189,7 +192,9 @@ function parseNewsForm(formData: FormData) {
 function validateNews(data: ReturnType<typeof parseNewsForm>): NewsFormState | null {
   const errors: NewsFormState["errors"] = {};
   if (data.title.length < 4) errors.title = "Informe um título (mín. 4 caracteres).";
-  if (data.content.length < 10) errors.content = "O conteúdo está muito curto.";
+  // Mede o TEXTO, não o HTML: um editor vazio manda "<p></p>", que tem tamanho
+  // mas nenhum conteúdo.
+  if (htmlParaTexto(data.content).length < 10) errors.content = "O conteúdo está muito curto.";
   if (!isNewsCategory(data.category)) errors.category = "Selecione uma categoria.";
   if (Object.keys(errors).length > 0) {
     return { status: "error", message: "Verifique os campos destacados.", errors };
