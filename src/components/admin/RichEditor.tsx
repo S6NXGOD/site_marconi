@@ -21,6 +21,8 @@ import Placeholder from "@tiptap/extension-placeholder";
 type Props = {
   name: string;
   defaultValue?: string;
+  /** Texto puro do corpo, para quem quiser reagir a ele (sugestão de assuntos). */
+  onTextChange?: (texto: string) => void;
 };
 
 const btn =
@@ -56,7 +58,7 @@ function Botao({
   );
 }
 
-export default function RichEditor({ name, defaultValue = "" }: Props) {
+export default function RichEditor({ name, defaultValue = "", onTextChange }: Props) {
   const [html, setHtml] = useState(defaultValue);
   const [enviando, setEnviando] = useState(false);
   const inputImagem = useRef<HTMLInputElement>(null);
@@ -87,7 +89,11 @@ export default function RichEditor({ name, defaultValue = "" }: Props) {
           "prose-editor min-h-[320px] px-4 py-3 outline-none focus:outline-none",
       },
     },
-    onUpdate: ({ editor }) => setHtml(editor.getHTML()),
+    onCreate: ({ editor }) => onTextChange?.(editor.getText()),
+    onUpdate: ({ editor }) => {
+      setHtml(editor.getHTML());
+      onTextChange?.(editor.getText());
+    },
   });
 
   const enviarImagem = useCallback(

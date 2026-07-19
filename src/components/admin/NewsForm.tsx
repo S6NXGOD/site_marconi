@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import ImageCropUploader from "./ImageCropUploader";
 import PublishDateField from "./PublishDateField";
@@ -10,6 +10,7 @@ import RichEditor from "./RichEditor";
 import TagField from "./TagField";
 import { autorDe, categoryOptions } from "@/lib/news";
 import type { NewsFormState } from "@/app/admin/actions";
+import type { TagRank } from "@/lib/get-tags";
 import type { NewsCategory } from "@prisma/client";
 
 type NewsInitial = {
@@ -32,8 +33,8 @@ type Props = {
   submitLabel: string;
   /** domínio público, só para o preview do endereço */
   siteUrl?: string;
-  /** tags que já existem no sistema, para sugerir */
-  tagSuggestions?: string[];
+  /** tags que já existem no sistema (com uso), para sugerir */
+  tagSuggestions?: TagRank[];
 };
 
 const initialState: NewsFormState = { status: "idle" };
@@ -68,6 +69,15 @@ export default function NewsForm({
   const [category, setCategory] = useState<NewsCategory>(
     initial?.category ?? "PUBLICO"
   );
+
+  // Texto do corpo (puro) para a sugestão de assuntos. Debounce leve: o editor
+  // dispara a cada tecla; não vale re-renderizar o formulário todo tão rápido.
+  const [corpoTexto, setCorpoTexto] = useState("");
+  const debounce = useRef<ReturnType<typeof setTimeout>>();
+  function aoDigitarCorpo(texto: string) {
+    clearTimeout(debounce.current);
+    debounce.current = setTimeout(() => setCorpoTexto(texto), 400);
+  }
 
   return (
     <form action={formAction} className="space-y-6">
@@ -133,6 +143,7 @@ export default function NewsForm({
         name="tags"
         defaultValue={initial?.tags}
         suggestions={tagSuggestions}
+        texto={`${title}\n${corpoTexto}`}
       />
 
       <div className="grid gap-6 sm:grid-cols-2">
@@ -183,7 +194,7 @@ export default function NewsForm({
           Corpo principal. Parágrafos, espaçamento, imagens no meio do texto e
           links são preservados.
         </p>
-        <RichEditor name="content" defaultValue={initial?.content} />
+        <RichEditor name="content" defaultValue={initial?.content} onTextChange={aoDigitarCorpo} />
         {state.errors?.content && (
           <p className="mt-1 text-xs text-red-600">{state.errors.content}</p>
         )}

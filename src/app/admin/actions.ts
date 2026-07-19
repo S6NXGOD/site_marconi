@@ -7,6 +7,7 @@ import { NewsCategory, AlertCategory, LeadStatus } from "@prisma/client";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
+import { slugify } from "@/lib/slugify";
 import { sanitizarConteudo, htmlParaTexto } from "@/lib/sanitize";
 import { tagsDoFormulario } from "@/lib/tags";
 import { autorDe } from "@/lib/news";
@@ -732,4 +733,86 @@ export async function toggleSourceActive(id: string, isActive: boolean) {
   await requireSession();
   await prisma.scrapeSource.update({ where: { id }, data: { isActive } });
   revalidatePath("/admin/fontes");
+}
+
+/* ─────────────────────── ASSUNTOS (tags) — gestão ─────────────────────── */
+
+export type AssuntoResultado = { ok: boolean; erro?: string };
+
+// A tag aparece em card, filtro e página de matéria; mexer nela reflete no site
+// público inteiro.
+function revalidateAssuntos() {
+  revalidatePath("/admin/assuntos");
+  revalidatePath("/admin/noticias");
+  revalidatePath("/noticias");
+  revalidatePath("/");
+}
+
+/** Renomeia um assunto. Se o novo nome colidir com outro, manda mesclar. */
+export async function renomearAssunto(
+  id: string,
+  novoNome: string
+): Promise<AssuntoResultado> {
+  await requireSession();
+  const nome = novoNome.replace(/\s+/g, " ").trim().slice(0, 40);
+  if (!nome) return { ok: false, erro: "Digite um nome." };
+  const slug = slugify(nome);
+  if (!slug) return { ok: false, erro: "Nome inválido." };
+
+  const conflito = await prisma.tag.findFirst({
+    where: { slug, NOT: { id } },
+    select: { id: true },
+  });
+  if (conflito) {
+    return {
+      ok: false,
+      erro: "Já existe um assunto com esse nome. Use Mesclar para juntá-los.",
+    };
+  }
+
+  await prisma.tag.update({ where: { id }, data: { name: nome, slug } });
+  revalidateAssuntos();
+  return { ok: true };
+}
+
+/**
+ * Mescla `origem` em `destino`: as notícias da origem passam a ter o destino e
+ * a origem é apagada. É como se juntassem duas grafias da mesma coisa.
+ */
+export async function mesclarAssuntos(
+  origemId: string,
+  destinoId: string
+): Promise<AssuntoResultado> {
+  await requireSession();
+  if (origemId === destinoId) {
+    return { ok: false, erro: "Escolha dois assuntos diferentes." };
+  }
+
+  const [origem, destino] = await Promise.all([
+    prisma.tag.findUnique({
+      where: { id: origemId },
+      select: { id: true, news: { select: { id: true } } },
+    }),
+    prisma.tag.findUnique({ where: { id: destinoId }, select: { id: true } }),
+  ]);
+  if (!origem || !destino) return { ok: false, erro: "Assunto não encontrado." };
+
+  // `connect` é idempotente: notícia que já tinha o destino não duplica.
+  await prisma.$transaction([
+    prisma.tag.update({
+      where: { id: destinoId },
+      data: { news: { connect: origem.news.map((n) => ({ id: n.id })) } },
+    }),
+    prisma.tag.delete({ where: { id: origemId } }),
+  ]);
+  revalidateAssuntos();
+  return { ok: true };
+}
+
+/** Exclui um assunto do sistema (o vínculo com as notícias cai junto). */
+export async function excluirAssunto(id: string): Promise<AssuntoResultado> {
+  await requireSession();
+  await prisma.tag.delete({ where: { id } });
+  revalidateAssuntos();
+  return { ok: true };
 }
