@@ -179,9 +179,12 @@ export async function POST(request: Request) {
 
     try {
       // O resumo da listagem vem picotado; o texto de verdade está na matéria.
-      const conteudo = fonte.contentSelector
+      // Da matéria vem também o SUBTÍTULO (linha-fina) — o resumo que o autor
+      // escreveu, melhor que a primeira frase do corpo.
+      const materia = fonte.contentSelector
         ? await buscarConteudo(link, fonte.contentSelector)
-        : "";
+        : { content: "", subtitulo: "" };
+      const conteudo = materia.content;
       const excerpt = String(pedido.excerpt ?? "").trim();
       const corpo = conteudo || excerpt;
 
@@ -210,8 +213,9 @@ export async function POST(request: Request) {
           // resolve colisão. Sem isto, o título inteiro do órgão vira slug —
           // saíam endereços de 114 caracteres.
           slug: await slugUnico(slugDaNoticia("", title)),
-          // Resumo do corpo em MARCAÇÃO (texto limpo); conteúdo já em HTML.
-          excerpt: resumoDaMateria(corpoFinal),
+          // Resumo: prefere o subtítulo da matéria (o que o autor escreveu);
+          // sem ele, o resumo da listagem; por último, a 1ª frase do corpo.
+          excerpt: resumoDaMateria(materia.subtitulo || excerpt || corpoFinal),
           content: markupParaHtml(corpoFinal),
           coverImage: capa,
           category: fonte.category,

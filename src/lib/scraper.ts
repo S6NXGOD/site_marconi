@@ -506,19 +506,57 @@ function extrairBlocos(
 }
 
 /**
- * Corpo da matéria, da página dela, em marcação rica.
+ * Subtítulo/linha-fina da matéria — o resumo que o autor escreveu, logo abaixo
+ * do título. Fica na PÁGINA da matéria, não na listagem, e é melhor resumo do
+ * que a primeira frase do corpo.
+ *
+ * Procura as classes usuais ("linha de olho", "subtítulo", "lead"…) e, como
+ * reforço, o elemento logo depois do <h1>. Ignora o og:description porque
+ * alguns sites (o Contábeis) o deixam genérico/desatualizado.
+ */
+function extrairSubtitulo($: cheerio.CheerioAPI): string {
+  const bom = (t: string) => t.length >= 30 && t.length <= 400;
+
+  for (const s of [
+    ".linhadeolho", ".linhadeOlho", ".linha-fina", ".linhafina", ".olho",
+    ".subtitulo", ".subtitle", ".sub-titulo", ".lead", ".chamada",
+    ".excerpt", ".summary", ".resumo", ".deck", ".standfirst", ".dek",
+  ]) {
+    const t = limpar($(s).first().text());
+    if (bom(t)) return t;
+  }
+
+  // Elemento logo após o <h1> (h2/p costumam ser a linha-fina). Fallback com
+  // guarda: só aceita PROSA — várias palavras, sem cara de crédito/data — para
+  // não confundir "Por Assessoria" ou "15 de julho de 2026" com resumo.
+  const h1 = $("h1").first();
+  if (h1.length) {
+    const prox = h1.next();
+    if (prox.is("h2,h3,p")) {
+      const t = limpar(prox.text());
+      const ehCredito = /^(por|texto|fonte|foto|de)\b/i.test(t);
+      const ehData = /^\d{1,2}(\/\d| de )/.test(t);
+      if (bom(t) && t.split(/\s+/).length >= 6 && !ehCredito && !ehData) return t;
+    }
+  }
+  return "";
+}
+
+/**
+ * Corpo da matéria (marcação rica) e o subtítulo, da página dela.
  *
  * A listagem só tem o resumo picotado ("[...]"), que não serve de rascunho.
  */
 export async function buscarConteudo(
   link: string,
   contentSelector: string
-): Promise<string> {
+): Promise<{ content: string; subtitulo: string }> {
   const html = await buscarHtml(link);
   const $ = cheerio.load(html);
 
+  const subtitulo = extrairSubtitulo($);
   const corpo = $(contentSelector).first();
-  if (corpo.length === 0) return "";
+  if (corpo.length === 0) return { content: "", subtitulo };
 
   // Fora o que não é matéria. Figure e iframe FICAM: são imagem e vídeo.
   // Além do óbvio (script/form), tira blocos de compartilhamento, relacionadas
@@ -534,7 +572,7 @@ export async function buscarConteudo(
     .remove();
 
   const blocos = extrairBlocos($, corpo, baseEfetiva($, link));
-  if (blocos.length > 0) return blocos.join("\n\n");
+  if (blocos.length > 0) return { content: blocos.join("\n\n"), subtitulo };
 
   // Sem bloco reconhecível, o texto pode estar solto em <div>. Quebrar pelas
   // linhas em branco preserva os parágrafos em vez de fundir tudo num bloco.
@@ -543,8 +581,8 @@ export async function buscarConteudo(
     .split(/\n\s*\n/)
     .map((t) => limpar(t))
     .filter((t) => t.length > 30);
-  if (soltos.length > 1) return soltos.join("\n\n");
+  if (soltos.length > 1) return { content: soltos.join("\n\n"), subtitulo };
 
   const unico = limpar(bruto);
-  return unico.length > 40 ? unico : "";
+  return { content: unico.length > 40 ? unico : "", subtitulo };
 }
