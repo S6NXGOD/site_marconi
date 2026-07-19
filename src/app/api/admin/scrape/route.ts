@@ -6,14 +6,16 @@ import {
   buscarItens,
   filtrarPorPeriodo,
   periodoValido,
+  maxPaginasPara,
   MAX_ITENS_BUSCA,
   type ItemRaspado,
 } from "@/lib/scraper";
 import { ScrapeError } from "@/lib/scrape-fetch";
 
 export const runtime = "nodejs";
-// Buscar uma página externa e parsear passa do limite padrão com folga.
-export const maxDuration = 60;
+// A busca agora pagina a listagem: até algumas páginas externas em sequência,
+// cada uma buscada e parseada. Passa do limite padrão com folga.
+export const maxDuration = 120;
 
 /**
  * Busca as notícias de uma fonte. NÃO grava nada.
@@ -52,7 +54,15 @@ export async function POST(request: Request) {
 
   let itens: ItemRaspado[];
   try {
-    itens = await buscarItens(fonte);
+    // Pagina a listagem da fonte até cobrir a janela pedida. A 1ª página só tem
+    // as matérias mais novas — sem seguir as seguintes, "30 dias" não alcançava
+    // o mês inteiro. Coleta um pouco além do teto de exibição para saber se
+    // sobrou (o aviso "limitado").
+    itens = await buscarItens(fonte, {
+      dias,
+      maxPaginas: maxPaginasPara(dias),
+      maxItens: MAX_ITENS_BUSCA + 10,
+    });
   } catch (e) {
     // Erro de raspagem é operacional (site fora do ar, layout mudou), não bug:
     // a mensagem tem que chegar na tela para a pessoa saber o que fazer.

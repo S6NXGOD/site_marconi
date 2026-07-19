@@ -31,6 +31,11 @@ function tagDe(node: any): string {
   return (node?.tagName || node?.name || "").toLowerCase();
 }
 
+/** Minúsculo, sem acento e sem espaços das pontas — para comparar textos. */
+function norm(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+}
+
 /** Classe que parece pertencer a UM item (sufixo numérico, estado is-/has-). */
 function ehClasseInstavel(c: string): boolean {
   return /\d{2,}$/.test(c) || /^(is|has)-/.test(c);
@@ -43,6 +48,8 @@ function classesEstaveis(el: cheerio.Cheerio<any>): string[] {
 }
 
 const RE_DATA = /\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}\s+de\s+[a-zà-ú]+/i;
+/** Datas relativas: "hoje", "ontem", "há 3 horas", "há 2 dias"… */
+const RE_DATA_REL = /\b(hoje|ontem|anteontem|h[aá]\s+\d+\s*(hora|dia|min|semana|m[eê]s))/i;
 
 /**
  * Detecta os seletores da LISTAGEM a partir do HTML da página.
@@ -142,21 +149,33 @@ export function detectarListagem(
   const clsHead = classesEstaveis(headingEl)[0];
   const titleSelector = clsHead ? `${htag}.${clsHead}` : htag;
 
-  // Link: se o <a> está DENTRO do heading, aponta pra ele; se ENVOLVE o
-  // heading, a extração já pega o primeiro <a> do item (linkSelector vazio).
-  const linkSelector = headingEl.find("a[href]").length > 0 ? `${titleSelector} a` : "";
+  // Link: se o <a> está DENTRO do heading, aponta pra ele; se o <a> ENVOLVE o
+  // heading, o link é o primeiro <a> do item (que costuma ser o que embrulha
+  // tudo). "a" é explícito — antes o campo ficava vazio e parecia que não
+  // capturava.
+  const linkSelector = headingEl.find("a[href]").length > 0 ? `${titleSelector} a` : "a";
 
   const imageSelector = it.find("img").first().length ? "img" : "";
 
-  // Data: <time> ou o primeiro texto-folha que casa uma data.
+  const tituloNorm = norm(headingEl.text());
+
+  // Data: casa data absoluta OU relativa ("Ontem", "há 3 horas"). Primeiro os
+  // seletores conhecidos (<time>, .timestamp, .data…), depois o primeiro
+  // texto-folha que pareça uma data.
+  const casaData = (t: string) => RE_DATA.test(t) || RE_DATA_REL.test(t);
   let dateSelector = "";
-  if (it.find("time").length) {
-    dateSelector = "time";
-  } else {
+  for (const s of ["time", ".timestamp", ".data", ".date", ".hora", ".data-publicacao", ".publicado"]) {
+    const e = it.find(s).first();
+    if (e.length && casaData(e.text().trim())) {
+      dateSelector = s;
+      break;
+    }
+  }
+  if (!dateSelector) {
     it.find("*").each((_, el) => {
       if (dateSelector) return;
       const $el = $(el);
-      if ($el.children().length === 0 && RE_DATA.test($el.text().trim())) {
+      if ($el.children().length === 0 && casaData($el.text().trim())) {
         const cls = classesEstaveis($el)[0];
         if (cls) dateSelector = `.${cls}`;
       }
@@ -173,21 +192,30 @@ export function detectarListagem(
     }
   }
 
-  // Categoria/assunto: um rótulo curto (não data, não frase). Nomes comuns
-  // em portais BR: .subtitulo-noticia (Receita), .editoria, .categoria…
+  // Categoria/assunto: um rótulo curto (não data, não frase, não o título).
+  // As classes conhecidas primeiro; como reforço, um <strong>/<b> AVULSO (fora
+  // de <p>) — é assim que o Contábeis marca "FISCALIZAÇÃO", "REFORMA
+  // TRIBUTÁRIA" etc. O de dentro de <p> é negrito de texto, não rótulo.
+  const rotuloValido = (t: string) =>
+    t.length >= 2 && t.length <= 30 && !casaData(t) && !/^\d+$/.test(t) && norm(t) !== tituloNorm;
   let categorySelector = "";
   for (const s of [
     ".subtitulo-noticia", ".editoria", ".categoria", ".category",
     ".cat-links a", ".post-category", "[rel~='category']", ".assunto", ".tag",
   ]) {
     const e = it.find(s).first();
-    const t = e.text().trim();
-    if (
-      e.length && t.length >= 2 && t.length <= 40 &&
-      !RE_DATA.test(t) && !/^\d+$/.test(t)
-    ) {
+    if (e.length && rotuloValido(e.text().trim())) {
       categorySelector = s;
       break;
+    }
+  }
+  if (!categorySelector) {
+    for (const tag of ["strong", "b"]) {
+      const e = it.find(tag).filter((_, el) => $(el).closest("p").length === 0).first();
+      if (e.length && rotuloValido(e.text().trim())) {
+        categorySelector = tag;
+        break;
+      }
     }
   }
 

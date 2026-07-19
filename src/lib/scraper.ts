@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { buscarHtml, ScrapeError } from "./scrape-fetch";
-import { inputDeData } from "./datas";
+import { hojeISO, inputDeData } from "./datas";
 
 export type ItemRaspado = {
   title: string;
@@ -63,7 +63,27 @@ export function parseDataRaspada(bruta: string): string {
     if (mes) return monta(+ext[3], mes, +ext[1]);
   }
 
+  // Relativas: muitos portais (o Contábeis entre eles) escrevem "Ontem 09:00",
+  // "há 3 horas", "há 2 dias" em vez da data. Convertidas para a data no Piauí.
+  const rel = semAcento(v);
+  if (/\bhoje\b|\bagora\b|\bh[a]\s+\d+\s*(hora|minuto|hr|min|seg)/.test(rel)) return hojeISO();
+  if (/\banteontem\b/.test(rel)) return diasAtras(2);
+  if (/\bontem\b/.test(rel)) return diasAtras(1);
+  const mr = /\bh[a]\s+(\d+)\s*(dia|semana|mes|mês)/.exec(rel);
+  if (mr) {
+    const n = Number(mr[1]);
+    const fator = mr[2].startsWith("semana") ? 7 : mr[2].startsWith("m") ? 30 : 1;
+    return diasAtras(n * fator);
+  }
+
   return "";
+}
+
+/** "hoje menos N dias", no fuso do Piauí, em yyyy-mm-dd. */
+function diasAtras(n: number): string {
+  const base = new Date(`${hojeISO()}T12:00:00Z`);
+  base.setUTCDate(base.getUTCDate() - n);
+  return inputDeData(base);
 }
 
 /** Espaços do HTML viram um espaço só; parágrafo vira linha em branco. */
@@ -136,26 +156,21 @@ function baseEfetiva($: cheerio.CheerioAPI, urlPagina: string): string {
 }
 
 /**
- * Lê a listagem e devolve os itens encontrados. NÃO grava nada.
+ * Extrai os itens de UMA página de listagem já carregada.
  *
- * Só o link é obrigatório: é a identidade da matéria e o que permite detectar
- * a reimportação. Sem título, o item não serve para nada, então cai fora.
+ * O `vistos` é compartilhado entre as páginas: a mesma matéria costuma reaparecer
+ * no topo da página seguinte (e no destaque + na lista da mesma página), e não
+ * pode entrar duas vezes. Só o link é obrigatório — é a identidade da matéria e
+ * o que permite detectar a reimportação. Sem título, o item não serve para nada.
  */
-export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
-  const html = await buscarHtml(fonte.url);
-  const $ = cheerio.load(html);
-  const base = baseEfetiva($, fonte.url);
-
-  const containers = $(fonte.itemSelector);
-  if (containers.length === 0) {
-    throw new ScrapeError(
-      `O seletor de itens ("${fonte.itemSelector}") não encontrou nada na página. ` +
-        "O site pode ter mudado de layout."
-    );
-  }
-
+function extrairItens(
+  $: cheerio.CheerioAPI,
+  containers: cheerio.Cheerio<any>,
+  base: string,
+  fonte: Fonte,
+  vistos: Set<string>
+): ItemRaspado[] {
   const itens: ItemRaspado[] = [];
-  const vistos = new Set<string>();
 
   containers.each((_, el) => {
     const $el = $(el);
@@ -170,7 +185,6 @@ export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
     const link = absoluta(hrefBruto ?? "", base);
 
     if (!title || !link) return;
-    // A mesma matéria costuma aparecer no destaque e na lista.
     if (vistos.has(link)) return;
     vistos.add(link);
 
@@ -197,17 +211,163 @@ export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
   return itens;
 }
 
+/**
+ * URL da PRÓXIMA página da listagem — ou null quando não há.
+ *
+ * Segue a paginação que dá para seguir de um servidor: a renderizada no HTML.
+ * Primeiro o padrão `<link rel=next>` / `<a rel=next>`; como reforço, um link de
+ * rodapé cujo texto é "próxima" / "seguinte" / "»". Números de página
+ * (`?pagina=2`, `/page/2/`) chegam por esses mesmos `<a>`, então não é preciso
+ * adivinhar o formato da URL do site.
+ *
+ * "Carregar mais" por JavaScript — que não troca a URL — NÃO tem como ser
+ * seguido daqui: nesse caso devolve null e a busca fica na primeira página.
+ */
+function proximaPagina(
+  $: cheerio.CheerioAPI,
+  base: string,
+  jaVistas: Set<string>
+): string | null {
+  const candidatos: string[] = [];
+  const anota = (href: string | undefined | null) => {
+    if (href) candidatos.push(href);
+  };
+
+  // rel=next é o sinal mais confiável — é o que o padrão reserva para isto.
+  $('a[rel~="next"]').each((_, el) => anota($(el).attr("href")));
+  $('link[rel="next"]').each((_, el) => anota($(el).attr("href")));
+
+  // Reforço: um link cujo texto ou aria-label é "próxima"/"seguinte"/"»".
+  if (candidatos.length === 0) {
+    $("a[href]").each((_, el) => {
+      const $a = $(el);
+      const rotulo = semAcento(`${$a.text()} ${$a.attr("aria-label") ?? ""}`)
+        .replace(/\s+/g, " ")
+        .trim();
+      if (
+        /(^|\s)(proxima|proximo|seguinte|next)(\s|$)/.test(rotulo) ||
+        rotulo === "»" ||
+        rotulo === "›"
+      ) {
+        anota($a.attr("href"));
+      }
+    });
+  }
+
+  for (const href of candidatos) {
+    // Sem a âncora: "…/pagina/2#topo" é a mesma página 2.
+    const abs = absoluta(href, base).split("#")[0];
+    if (abs && !jaVistas.has(abs)) return abs;
+  }
+  return null;
+}
+
+/** Opções da busca. Sem nenhuma, lê só a primeira página (jeito antigo). */
+export type OpcoesBusca = {
+  /** Janela desejada em dias — orienta até onde vale a pena paginar. */
+  dias?: number;
+  /** Teto de páginas da listagem a seguir (rede de segurança). */
+  maxPaginas?: number;
+  /** Teto de itens a coletar no total, somando as páginas. */
+  maxItens?: number;
+};
+
+/**
+ * Lê a listagem e devolve os itens encontrados. NÃO grava nada.
+ *
+ * Por padrão lê só a primeira página. Com `maxPaginas > 1`, segue a paginação do
+ * site até cobrir a janela pedida (`dias`): a listagem vem do mais recente para
+ * o mais antigo, então quando aparece um item mais VELHO que o corte, as páginas
+ * seguintes só teriam matéria ainda mais antiga — e a busca para ali.
+ *
+ * É isto que faz "Últimos 30 dias" trazer de fato 30 dias. A primeira página
+ * costuma ter só as ~10-15 matérias mais novas, e o resto do mês está nas
+ * páginas seguintes; sem paginar, 7, 15 e 30 dias devolviam quase o mesmo (e,
+ * numa fonte sem data na listagem, exatamente o mesmo).
+ */
+export async function buscarItens(
+  fonte: Fonte,
+  opcoes: OpcoesBusca = {}
+): Promise<ItemRaspado[]> {
+  const maxPaginas = Math.max(1, opcoes.maxPaginas ?? 1);
+  const maxItens = opcoes.maxItens ?? Infinity;
+  const corte = opcoes.dias && opcoes.dias > 0 ? corteDeDias(opcoes.dias) : "";
+
+  const itens: ItemRaspado[] = [];
+  const vistos = new Set<string>();
+  const paginasVistas = new Set<string>();
+
+  let urlAtual: string | null = fonte.url;
+
+  for (let pagina = 0; urlAtual && pagina < maxPaginas; pagina++) {
+    if (paginasVistas.has(urlAtual)) break; // trava contra laço de paginação
+    paginasVistas.add(urlAtual);
+
+    const html = await buscarHtml(urlAtual);
+    const $ = cheerio.load(html);
+    const base = baseEfetiva($, urlAtual);
+
+    const containers = $(fonte.itemSelector);
+    if (containers.length === 0) {
+      // Na 1ª página, o seletor não casar é erro de configuração e precisa
+      // aparecer na tela. Nas seguintes, é só o fim da lista: para em silêncio.
+      if (pagina === 0) {
+        throw new ScrapeError(
+          `O seletor de itens ("${fonte.itemSelector}") não encontrou nada na página. ` +
+            "O site pode ter mudado de layout."
+        );
+      }
+      break;
+    }
+
+    const novos = extrairItens($, containers, base, fonte, vistos);
+    itens.push(...novos);
+
+    // Página que não trouxe nada novo (paginação que repete o topo, ou um
+    // "carregar mais" por JS que devolve o mesmo HTML): seguir não adianta.
+    if (novos.length === 0) break;
+    if (itens.length >= maxItens) break;
+    // Cruzou a borda da janela? O resto da listagem é ainda mais antigo.
+    if (corte && novos.some((i) => i.date && i.date < corte)) break;
+
+    urlAtual = proximaPagina($, base, paginasVistas);
+  }
+
+  return maxItens === Infinity ? itens : itens.slice(0, maxItens);
+}
+
 /** Períodos aceitos. Fora desta lista, cai no padrão. */
 export const PERIODOS_DIAS = [7, 15, 30] as const;
 export const PERIODO_PADRAO = 7;
 
 /** Teto de itens devolvidos pela busca, qualquer que seja o período. */
-export const MAX_ITENS_BUSCA = 30;
+export const MAX_ITENS_BUSCA = 40;
+
+/** Teto de páginas da listagem que uma busca percorre — rede de segurança. */
+export const MAX_PAGINAS_BUSCA = 5;
+
+/**
+ * Quantas páginas seguir para cada período. Mais dias pedem ir mais fundo na
+ * listagem; num período curto, a 1ª (ou 2ª) página já basta. Numa fonte COM
+ * data a busca ainda para sozinha ao cruzar o corte — este é só o teto.
+ */
+export function maxPaginasPara(dias: number): number {
+  if (dias >= 30) return MAX_PAGINAS_BUSCA;
+  if (dias >= 15) return 3;
+  return 2;
+}
 
 /** Só aceita período conhecido — `dias` vem do navegador. */
 export function periodoValido(dias: unknown): number {
   const n = Number(dias);
   return (PERIODOS_DIAS as readonly number[]).includes(n) ? n : PERIODO_PADRAO;
+}
+
+/** String yyyy-mm-dd de `dias` atrás, no fuso do Piauí. É a borda da janela. */
+function corteDeDias(dias: number): string {
+  const limite = new Date();
+  limite.setUTCDate(limite.getUTCDate() - dias);
+  return inputDeData(limite);
 }
 
 /**
@@ -219,10 +379,7 @@ export function periodoValido(dias: unknown): number {
 export function filtrarPorPeriodo(itens: ItemRaspado[], dias: number): ItemRaspado[] {
   if (!dias || dias <= 0) return itens;
 
-  const limite = new Date();
-  limite.setUTCDate(limite.getUTCDate() - dias);
-  const corte = inputDeData(limite);
-
+  const corte = corteDeDias(dias);
   // Comparação de strings yyyy-mm-dd é ordenação de data — e evita reconverter.
   return itens.filter((i) => !i.date || i.date >= corte);
 }
