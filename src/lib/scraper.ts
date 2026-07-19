@@ -119,6 +119,23 @@ function absoluta(valor: string, base: string): string {
 }
 
 /**
+ * Base efetiva da página. Se há `<base href>`, os links relativos resolvem
+ * contra ELE, não contra a URL da página — é o que o navegador faz. O
+ * Contábeis, por exemplo, lista em /conteudo/tributario/ mas usa
+ * `<base href="https://www.contabeis.com.br/">`, então "artigos/123/" vira
+ * /artigos/123/, não /conteudo/tributario/artigos/123/.
+ */
+function baseEfetiva($: cheerio.CheerioAPI, urlPagina: string): string {
+  const href = $("base[href]").first().attr("href");
+  if (!href) return urlPagina;
+  try {
+    return new URL(href, urlPagina).toString();
+  } catch {
+    return urlPagina;
+  }
+}
+
+/**
  * Lê a listagem e devolve os itens encontrados. NÃO grava nada.
  *
  * Só o link é obrigatório: é a identidade da matéria e o que permite detectar
@@ -127,6 +144,7 @@ function absoluta(valor: string, base: string): string {
 export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
   const html = await buscarHtml(fonte.url);
   const $ = cheerio.load(html);
+  const base = baseEfetiva($, fonte.url);
 
   const containers = $(fonte.itemSelector);
   if (containers.length === 0) {
@@ -149,7 +167,7 @@ export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
     const hrefBruto = fonte.linkSelector
       ? $el.find(fonte.linkSelector).first().attr("href")
       : $el.find("a[href]").first().attr("href");
-    const link = absoluta(hrefBruto ?? "", fonte.url);
+    const link = absoluta(hrefBruto ?? "", base);
 
     if (!title || !link) return;
     // A mesma matéria costuma aparecer no destaque e na lista.
@@ -166,7 +184,7 @@ export async function buscarItens(fonte: Fonte): Promise<ItemRaspado[]> {
         ? limpar($el.find(fonte.excerptSelector).first().text())
         : "",
       imageUrl: fonte.imageSelector
-        ? absoluta(imagemDe($, $el.find(fonte.imageSelector)), fonte.url)
+        ? absoluta(imagemDe($, $el.find(fonte.imageSelector)), base)
         : "",
       // Categoria da fonte: nome curto e limpo (vira tag). Datas ou frases
       // longas capturadas por engano são descartadas.
@@ -346,11 +364,19 @@ export async function buscarConteudo(
   if (corpo.length === 0) return "";
 
   // Fora o que não é matéria. Figure e iframe FICAM: são imagem e vídeo.
+  // Além do óbvio (script/form), tira blocos de compartilhamento, relacionadas
+  // e publicidade — o "leia também" e o banner de evento que os portais cravam
+  // no meio/fim do corpo. O que escapar, a edição do rascunho remove.
   corpo
-    .find("script,style,noscript,form,.sharedaddy,.jp-relatedposts,.social,.compartilhe")
+    .find(
+      "script,style,noscript,form,iframe[src*='ads']," +
+        ".sharedaddy,.jp-relatedposts,.social,.compartilhe,.compartilhamento," +
+        ".relacionadas,.related,.leia-tambem,.veja-tambem,.mais-lidas," +
+        ".newsletter,.publicidade,.propaganda,.banner,.ads,.ad,.anuncio"
+    )
     .remove();
 
-  const blocos = extrairBlocos($, corpo, link);
+  const blocos = extrairBlocos($, corpo, baseEfetiva($, link));
   if (blocos.length > 0) return blocos.join("\n\n");
 
   // Sem bloco reconhecível, o texto pode estar solto em <div>. Quebrar pelas

@@ -60,32 +60,36 @@ export function detectarListagem(
     return null;
   }
 
-  // Manchete = link de título: <a href> do mesmo site, texto com corpo, dentro
-  // de um heading. O heading é o que separa notícia de item de menu.
-  const ehManchete = (a: any): boolean => {
-    const $a = $(a);
-    if ($a.text().trim().length < 20) return false;
+  // Manchete = um HEADING (h1-h4) com texto de corpo, ligado a um link do mesmo
+  // site. O link tanto pode estar DENTRO do heading (<h2><a>…</a></h2>) quanto
+  // ENVOLVER o heading (<a><h2>…</h2></a>) — os sites variam entre os dois, e
+  // reconhecer só um fazia a detecção falhar em portais como o Contábeis.
+  const linkDoHeading = (h: any): any | null => {
+    const $h = $(h);
+    if ($h.text().trim().length < 20) return null;
+    let $a: any = $h.find("a[href]").first();
+    if ($a.length === 0) $a = $h.closest("a[href]");
+    if ($a.length === 0) return null;
     try {
-      return new URL($a.attr("href") || "", baseUrl).hostname === host;
+      if (new URL($a.attr("href") || "", baseUrl).hostname !== host) return null;
     } catch {
-      return false;
+      return null;
     }
+    return $a.get(0);
   };
   const contaManchetes = (el: any): number =>
-    $(el)
-      .find("h1 a[href],h2 a[href],h3 a[href],h4 a[href]")
-      .filter((_, a) => ehManchete(a)).length;
+    $(el).find("h1,h2,h3,h4").filter((_, h) => linkDoHeading(h) !== null).length;
 
-  const manchetes = $("h1 a[href],h2 a[href],h3 a[href],h4 a[href]")
-    .filter((_, a) => ehManchete(a))
+  const manchetes = $("h1,h2,h3,h4")
+    .filter((_, h) => linkDoHeading(h) !== null)
     .toArray();
   if (manchetes.length < 3) return null;
 
   // Card = ancestral mais externo que ainda contém UMA só manchete. Subir além
   // disso entraria na lista, que tem várias.
   const cards: any[] = [];
-  for (const a of manchetes) {
-    let el = $(a).closest("h1,h2,h3,h4");
+  for (const h of manchetes) {
+    let el = $(h);
     while (
       el.parent().length &&
       !el.parent().is("body,html") &&
@@ -129,12 +133,18 @@ export function detectarListagem(
 
   const it = itens.first();
 
-  const heading = it
-    .find("h1 a,h2 a,h3 a,h4 a")
-    .filter((_, a) => ehManchete(a))
+  // O título é o próprio heading (o texto dele funciona nos dois padrões).
+  const headingEl = it
+    .find("h1,h2,h3,h4")
+    .filter((_, h) => linkDoHeading(h) !== null)
     .first();
-  const htag = tagDe(heading.closest("h1,h2,h3,h4").get(0)) || "h3";
-  const titleSelector = `${htag} a`;
+  const htag = tagDe(headingEl.get(0)) || "h3";
+  const clsHead = classesEstaveis(headingEl)[0];
+  const titleSelector = clsHead ? `${htag}.${clsHead}` : htag;
+
+  // Link: se o <a> está DENTRO do heading, aponta pra ele; se ENVOLVE o
+  // heading, a extração já pega o primeiro <a> do item (linkSelector vazio).
+  const linkSelector = headingEl.find("a[href]").length > 0 ? `${titleSelector} a` : "";
 
   const imageSelector = it.find("img").first().length ? "img" : "";
 
@@ -184,7 +194,7 @@ export function detectarListagem(
   return {
     itemSelector,
     titleSelector,
-    linkSelector: titleSelector,
+    linkSelector,
     dateSelector,
     imageSelector,
     excerptSelector,
