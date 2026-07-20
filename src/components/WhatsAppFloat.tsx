@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Icon } from "@/lib/icons";
+import { marcarFloat, useOutroFloatAberto, useEhMobile } from "@/lib/floats";
 
 export type WhatsappItem = {
   id: string;
@@ -42,6 +43,14 @@ export default function WhatsAppFloat({
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // Coordenação com o float dos prazos: no mobile, só um aparece por vez.
+  const mobile = useEhMobile();
+  const prazosAberto = useOutroFloatAberto("whatsapp");
+  useEffect(() => {
+    marcarFloat("whatsapp", open);
+    return () => marcarFloat("whatsapp", false);
+  }, [open]);
+
   // Abre sozinho ao entrar no site, uma vez por sessão. Começa fechado no
   // servidor e no cliente (sem hydration mismatch); o efeito abre depois.
   useEffect(() => {
@@ -56,7 +65,12 @@ export default function WhatsAppFloat({
     if (fechado) return;
 
     // Um respiro depois dos prazos, para os dois não pularem juntos na cara.
-    const t = setTimeout(() => setOpen(true), 1400);
+    // No MOBILE não abre sozinho: os prazos já ocupam o rodapé, e dois cards
+    // cheios se sobreporiam. Aqui fica só a bolinha; a pessoa toca se quiser.
+    const t = setTimeout(() => {
+      if (window.matchMedia("(max-width: 639px)").matches) return;
+      setOpen(true);
+    }, 1400);
     return () => clearTimeout(t);
   }, [contacts.length]);
 
@@ -97,7 +111,9 @@ export default function WhatsAppFloat({
   return (
     <div
       ref={rootRef}
-      className="fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6"
+      className={`fixed bottom-4 right-4 z-40 flex flex-col items-end gap-3 sm:bottom-6 sm:right-6 ${
+        mobile && prazosAberto ? "hidden" : ""
+      }`}
     >
       <AnimatePresence>
         {open && (

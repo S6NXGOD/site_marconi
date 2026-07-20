@@ -4,6 +4,7 @@ import { diasAte, formatarDiaPrazo } from "@/lib/datas";
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { marcarFloat, useOutroFloatAberto, useEhMobile } from "@/lib/floats";
 import {
   alertCategoryLabels,
   alertCategoryBadgeClasses,
@@ -65,6 +66,14 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
     return () => clearTimeout(t);
   }, [urgent.length]);
 
+  // Coordenação com o float do WhatsApp: no mobile, só um aparece por vez.
+  const mobile = useEhMobile();
+  const whatsappAberto = useOutroFloatAberto("prazos");
+  useEffect(() => {
+    marcarFloat("prazos", open);
+    return () => marcarFloat("prazos", false);
+  }, [open]);
+
   if (urgent.length === 0) return null;
 
   const total = urgent.length;
@@ -79,7 +88,11 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-40 sm:bottom-6 sm:left-6">
+    <div
+      className={`fixed bottom-4 left-4 z-40 sm:bottom-6 sm:left-6 ${
+        mobile && whatsappAberto ? "hidden" : ""
+      }`}
+    >
       <AnimatePresence mode="wait" initial={false}>
         {open ? (
           <motion.section
