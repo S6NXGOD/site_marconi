@@ -255,6 +255,46 @@ export type AlertaNovo = {
   isActive: boolean;
 };
 
+/** Escapa um campo de CSV: dobra as aspas e cerca o campo quando necessário. */
+function campoCSV(valor: string): string {
+  const v = valor ?? "";
+  return /[";\r\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
+}
+
+/** dd/mm/yyyy a partir da Date (o alerta é gravado ao meio-dia UTC). */
+function dataBRDeData(d: Date): string {
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${p(d.getUTCDate())}/${p(d.getUTCMonth() + 1)}/${d.getUTCFullYear()}`;
+}
+
+/**
+ * Gera o CSV dos alertas já cadastrados no MESMO formato do modelo de
+ * importação (titulo;data;categoria;descricao;ativo). É de propósito: o arquivo
+ * exportado volta a ser importável — dá para exportar, ajustar no Excel e
+ * reimportar sem retrabalho.
+ */
+export function alertasParaCSV(
+  alertas: {
+    title: string;
+    date: Date;
+    category: AlertCategory;
+    description: string;
+    isActive: boolean;
+  }[]
+): string {
+  const cabecalho = "titulo;data;categoria;descricao;ativo";
+  const linhas = alertas.map((a) =>
+    [
+      campoCSV(a.title),
+      dataBRDeData(a.date),
+      a.category === "PUBLICO" ? "Gestão Pública" : "Setor Privado",
+      campoCSV(a.description),
+      a.isActive ? "sim" : "não",
+    ].join(";")
+  );
+  return [cabecalho, ...linhas].join("\r\n");
+}
+
 /** Mesmo título no mesmo dia = mesmo alerta. */
 function chaveDoAlerta(titulo: string, dia: string): string {
   return `${titulo.trim().toLowerCase()}|${dia}`;
