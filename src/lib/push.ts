@@ -109,17 +109,25 @@ export async function notificarNoticia(n: {
   });
 }
 
-/** Aviso de novo prazo/alerta — o título é o próprio prazo. */
-export async function notificarAlerta(a: {
+/**
+ * Lembrete de um prazo que se aproxima — "Falta 1 semana", "Faltam 2 dias",
+ * "Vence amanhã", "Vence hoje". Não é o aviso de "prazo cadastrado": quem
+ * dispara é a rotina diária (/api/cron/prazos) nos marcos de dias restantes.
+ *
+ * A tag é POR PRAZO: cada obrigação tem uma única notificação que se ATUALIZA
+ * ao se aproximar (7 dias → 2 dias → hoje), em vez de empilhar várias.
+ */
+export async function lembrarPrazo(a: {
+  id: string;
   title: string;
   date: Date;
 }): Promise<void> {
-  const prazo = deadlineLabel(a.date).text; // "Vence amanhã", "Faltam 5 dias"…
+  const prazo = deadlineLabel(a.date).text;
   await enviarPush({
     title: a.title,
     body: `🗓️ ${prazo} — ${formatarDataCurta(a.date)}`,
     url: `${SITE_URL}/#alertas`,
-    tag: "novo-prazo",
+    tag: `prazo-${a.id}`,
   });
 }
 

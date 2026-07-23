@@ -13,7 +13,7 @@ import { tagsDoFormulario } from "@/lib/tags";
 import { autorDe } from "@/lib/news";
 import { dataDeInput, inputDeData } from "@/lib/datas";
 import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
-import { notificarNoticia, notificarAlerta, notificarAprovacao } from "@/lib/push";
+import { notificarNoticia, notificarAprovacao } from "@/lib/push";
 
 /** Dispara uma notificação sem nunca derrubar a ação que a originou. */
 async function avisar(fn: () => Promise<void>) {
@@ -368,7 +368,7 @@ export async function createAlert(
   const invalid = validateAlert(data);
   if (invalid) return invalid;
 
-  const alerta = await prisma.alert.create({
+  await prisma.alert.create({
     data: {
       title: data.title,
       date: dataDeInput(data.date) ?? new Date(),
@@ -376,12 +376,10 @@ export async function createAlert(
       description: data.description,
       isActive: data.isActive,
     },
-    select: { title: true, date: true, isActive: true },
   });
 
-  // Alerta inativo não aparece no site; também não avisa.
-  if (alerta.isActive) await avisar(() => notificarAlerta(alerta));
-
+  // Prazo NÃO avisa no cadastro: o lembrete é disparado pela rotina diária
+  // (/api/cron/prazos) conforme a data se aproxima.
   revalidateAll();
   redirect("/admin/alertas?ok=created");
 }
