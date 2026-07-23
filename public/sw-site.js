@@ -27,8 +27,8 @@ self.addEventListener("push", (event) => {
   const titulo = dados.title || "Grupo Dr. Marconi Nunes";
   const opcoes = {
     body: dados.body || "",
-    icon: "/icon-192.png",
-    badge: "/icon-192.png",
+    icon: "/icon-192.png?v=2",
+    badge: "/icon-192.png?v=2",
     // Imagem grande de preview (capa da notícia) — exibida onde houver suporte.
     image: dados.image,
     tag: dados.tag,
