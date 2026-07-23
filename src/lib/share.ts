@@ -61,6 +61,51 @@ export function mensagemDaNoticia({
   return partes.join("\n\n");
 }
 
+/** Chamada do compartilhamento de PRAZO — leva ao calendário de obrigações. */
+export const CHAMADA_PRAZOS =
+  "*Acompanhe todos os prazos no portal do Grupo Dr. Marconi Nunes:*";
+
+/**
+ * Mensagem de um prazo/alerta no WhatsApp:
+ *
+ *   *DCTF Mensal*
+ *   🗓️ Vence amanhã — 20/08/2026
+ *   Entrega da declaração de débitos e créditos tributários federais.
+ *   *Acompanhe todos os prazos no portal:*
+ *   link
+ *
+ * `prazo` e `dia` chegam prontos de quem chama (deadlineLabel e
+ * formatarDataCurta) — este módulo não faz conta de data.
+ */
+export function mensagemDoAlerta({
+  title,
+  description,
+  prazo,
+  dia,
+  url,
+}: {
+  title: string;
+  description?: string | null;
+  /** "Vence amanhã", "Faltam 5 dias"… */
+  prazo: string;
+  /** "20/08/2026" */
+  dia: string;
+  url: string;
+}): string {
+  const partes = [
+    `*${semFormatacao(title)}*`,
+    `🗓️ ${semFormatacao(prazo)} — ${dia}`,
+  ];
+
+  const desc = description?.trim();
+  if (desc) partes.push(semFormatacao(desc));
+
+  partes.push(CHAMADA_PRAZOS);
+  partes.push(url);
+
+  return partes.join("\n\n");
+}
+
 /** Link que abre o WhatsApp já com a mensagem escrita (app no celular, Web no desktop). */
 export function linkWhatsApp(mensagem: string): string {
   return `https://wa.me/?text=${encodeURIComponent(mensagem)}`;

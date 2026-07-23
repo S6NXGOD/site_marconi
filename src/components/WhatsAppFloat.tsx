@@ -31,10 +31,6 @@ function waLink(phone: string, message: string) {
 // Atendente exibido na mensagem de boas-vindas.
 const ATTENDANT = { name: "Recepção" };
 
-// Marca que a pessoa fechou o atendimento NESTA sessão. Abre sozinho ao entrar
-// no site, mas não reabre depois que ela minimiza e navega.
-const SESSION_KEY = "mn:whatsapp-fechado";
-
 export default function WhatsAppFloat({
   contacts,
 }: {
@@ -51,38 +47,11 @@ export default function WhatsAppFloat({
     return () => marcarFloat("whatsapp", false);
   }, [open]);
 
-  // Abre sozinho ao entrar no site, uma vez por sessão. Começa fechado no
-  // servidor e no cliente (sem hydration mismatch); o efeito abre depois.
-  useEffect(() => {
-    if (contacts.length === 0) return;
-
-    let fechado = false;
-    try {
-      fechado = window.sessionStorage.getItem(SESSION_KEY) === "1";
-    } catch {
-      /* sessionStorage indisponível */
-    }
-    if (fechado) return;
-
-    // Um respiro depois dos prazos, para os dois não pularem juntos na cara.
-    // No MOBILE não abre sozinho: os prazos já ocupam o rodapé, e dois cards
-    // cheios se sobreporiam. Aqui fica só a bolinha; a pessoa toca se quiser.
-    const t = setTimeout(() => {
-      if (window.matchMedia("(max-width: 639px)").matches) return;
-      setOpen(true);
-    }, 1400);
-    return () => clearTimeout(t);
-  }, [contacts.length]);
-
-  // Fechar de propósito é o que grava a sessão — não a montagem inicial, senão
-  // o auto-abrir se envenenaria antes mesmo de rodar.
+  // NÃO abre sozinho: o atendimento só aparece se a pessoa tocar na bolinha.
+  // Um chat que pula na cara ao entrar no site atrapalha a leitura — e no
+  // celular ainda disputava o rodapé com o aviso de prazos.
   function fechar() {
     setOpen(false);
-    try {
-      window.sessionStorage.setItem(SESSION_KEY, "1");
-    } catch {
-      /* ignora */
-    }
   }
 
   // Fecha com Esc e ao clicar fora.

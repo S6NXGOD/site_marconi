@@ -13,6 +13,7 @@ import {
   isUrgent,
 } from "@/lib/news";
 import ExpandableText from "./ExpandableText";
+import ShareAlertButton from "./ShareAlertButton";
 
 export type AlertItem = {
   id: string;
@@ -276,12 +277,15 @@ export default function AlertsPanel({
                               <h4 className="text-sm font-semibold leading-snug text-conplan transition-colors group-hover:text-marconi">
                                 {realce(alert.title, busca)}
                               </h4>
-                              <span
-                                className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${alertCategoryBadgeClasses[alert.category]}`}
-                                title={alertCategoryLabels[alert.category]}
-                              >
-                                {alert.category === "PUBLICO" ? "Pública" : "Privado"}
-                              </span>
+                              <div className="flex shrink-0 items-center gap-1">
+                                <span
+                                  className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${alertCategoryBadgeClasses[alert.category]}`}
+                                  title={alertCategoryLabels[alert.category]}
+                                >
+                                  {alert.category === "PUBLICO" ? "Pública" : "Privado"}
+                                </span>
+                                <ShareAlertButton alert={alert} />
+                              </div>
                             </div>
 
                             <div className="mt-1">

@@ -14,6 +14,7 @@ import {
 } from "@/lib/news";
 import type { AlertItem } from "./AlertsPanel";
 import ExpandableText from "./ExpandableText";
+import ShareAlertButton from "./ShareAlertButton";
 
 // Marca que a pessoa fechou o aviso NESTA sessão do navegador. Assim ele abre
 // sozinho ao entrar no site, mas não volta a abrir se ela fechar e navegar.
@@ -198,12 +199,15 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
                             <p className="text-[12.5px] font-medium leading-snug text-conplan">
                               {alert.title}
                             </p>
-                            <span
-                              className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${alertCategoryBadgeClasses[alert.category]}`}
-                              title={alertCategoryLabels[alert.category]}
-                            >
-                              {alert.category === "PUBLICO" ? "Pública" : "Privado"}
-                            </span>
+                            <div className="flex shrink-0 items-center gap-0.5">
+                              <span
+                                className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${alertCategoryBadgeClasses[alert.category]}`}
+                                title={alertCategoryLabels[alert.category]}
+                              >
+                                {alert.category === "PUBLICO" ? "Pública" : "Privado"}
+                              </span>
+                              <ShareAlertButton alert={alert} compacto />
+                            </div>
                           </div>
 
                           {/* descrição legível, com "Ver mais" quando transborda */}
