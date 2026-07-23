@@ -1,7 +1,6 @@
 "use client";
 
 import { formatarData } from "@/lib/datas";
-import { resumoExibicao } from "@/lib/resumo";
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -16,14 +15,17 @@ export type NewsItem = {
   id: string;
   title: string;
   slug: string;
-  excerpt: string | null;
-  content: string;
+  /** resumo pronto — montado no servidor, o corpo não vem ao browser */
+  summary: string;
   coverImage: string | null;
   category: NewsCategory;
   publishedAt: Date | string;
 };
 
-type Filter = "ALL" | NewsCategory;
+export type Filter = "ALL" | NewsCategory;
+
+/** Uma lista por aba: cada uma traz as últimas notícias DAQUELA categoria. */
+export type NoticiasPorFiltro = Record<Filter, NewsItem[]>;
 
 const filters: { value: Filter; label: string }[] = [
   { value: "ALL", label: "Todas" },
@@ -31,11 +33,6 @@ const filters: { value: Filter; label: string }[] = [
   { value: "PRIVADO", label: "Setor Privado" },
   { value: "GERAL", label: "Geral" },
 ];
-
-function summary(item: NewsItem) {
-  // Frase completa; resumo cru com "…" cede lugar ao corpo (ver resumoExibicao).
-  return resumoExibicao(item.excerpt, item.content, 180);
-}
 
 function Badge({ category }: { category: NewsCategory }) {
   return (
@@ -53,18 +50,18 @@ export default function NewsPortal({
   alerts,
   encerrados,
 }: {
-  news: NewsItem[];
+  news: NoticiasPorFiltro;
   /** últimas cadastradas (createdAt) — alimenta "Mais notícias" */
-  ultimas: NewsItem[];
+  ultimas: NoticiasPorFiltro;
   alerts: AlertItem[];
   encerrados: AlertItem[];
 }) {
   const [filter, setFilter] = useState<Filter>("ALL");
 
-  const visible = useMemo(
-    () => (filter === "ALL" ? news : news.filter((n) => n.category === filter)),
-    [news, filter]
-  );
+  // Cada aba já vem com a própria lista do servidor. Filtrar aqui, dentro das
+  // N mais recentes no geral, deixava a aba vazia sempre que as últimas
+  // publicadas fossem todas de outro setor — mesmo havendo notícias.
+  const visible = news[filter] ?? [];
 
   const featured = visible[0];
   const side = visible.slice(1, 3);
@@ -73,8 +70,7 @@ export default function NewsPortal({
   // destaques. Só tira o que já está em destaque agora, para não repetir.
   const latest = useMemo(() => {
     const emDestaque = new Set([featured?.id, ...side.map((s) => s.id)]);
-    const base = filter === "ALL" ? ultimas : ultimas.filter((n) => n.category === filter);
-    return base.filter((n) => !emDestaque.has(n.id));
+    return (ultimas[filter] ?? []).filter((n) => !emDestaque.has(n.id));
   }, [ultimas, filter, featured, side]);
 
   // Prazos que vencem em até 7 dias — alimenta o destaque da intro.
@@ -83,7 +79,7 @@ export default function NewsPortal({
   // Site sem nenhuma notícia publicada (ex.: recém no ar). Nesse caso os
   // filtros não fazem sentido e a seção "Mais notícias" some — nada de
   // caixas vazias empilhadas.
-  const semNoticias = news.length === 0;
+  const semNoticias = news.ALL.length === 0;
 
   return (
     <>
@@ -191,7 +187,7 @@ export default function NewsPortal({
                         {featured.title}
                       </h2>
                       <p className="mt-2 line-clamp-2 hidden text-sm text-slate-200 sm:block sm:text-base">
-                        {summary(featured)}
+                        {featured.summary}
                       </p>
                       <time className="mt-3 block text-xs font-medium uppercase tracking-wider text-marconi-light">
                         {formatarData(featured.publishedAt)}
