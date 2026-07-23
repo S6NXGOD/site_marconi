@@ -14,6 +14,7 @@ import {
 } from "@/lib/news";
 import ExpandableText from "./ExpandableText";
 import ShareAlertButton from "./ShareAlertButton";
+import NotificationOptIn from "./NotificationOptIn";
 
 export type AlertItem = {
   id: string;
@@ -106,6 +107,9 @@ export default function AlertsPanel({
                   : "Prefeituras e clientes corporativos"}
               </p>
             </div>
+
+            {/* Avisos push (some quando o navegador não suporta ou não há chave) */}
+            <NotificationOptIn dark />
           </div>
 
           {/* ——— Busca ——— */}

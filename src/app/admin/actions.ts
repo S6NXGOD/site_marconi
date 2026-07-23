@@ -13,6 +13,16 @@ import { tagsDoFormulario } from "@/lib/tags";
 import { autorDe } from "@/lib/news";
 import { dataDeInput, inputDeData } from "@/lib/datas";
 import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
+import { notificarNoticia, notificarAlerta } from "@/lib/push";
+
+/** Dispara uma notificação sem nunca derrubar a ação que a originou. */
+async function avisar(fn: () => Promise<void>) {
+  try {
+    await fn();
+  } catch (e) {
+    console.error("[push] falha ao notificar:", e);
+  }
+}
 
 async function requireSession() {
   const session = await getServerSession(authOptions);
@@ -227,7 +237,7 @@ export async function createNews(
   const invalid = validateNews(data);
   if (invalid) return invalid;
 
-  await prisma.news.create({
+  const nova = await prisma.news.create({
     data: {
       title: data.title,
       slug: await slugUnico(slugDaNoticia(data.slugInput, data.title)),
@@ -240,7 +250,11 @@ export async function createNews(
       publishedAt: dataDePublicacao(data.publishedAt),
       tags: relacaoTags(data.tags, false),
     },
+    select: { title: true, slug: true, isPublished: true },
   });
+
+  // Só notifica se já nasce publicada — rascunho não avisa ninguém.
+  if (nova.isPublished) await avisar(() => notificarNoticia(nova));
 
   revalidateAll();
   redirect("/admin/noticias?ok=created");
@@ -257,12 +271,13 @@ export async function updateNews(
   if (invalid) return invalid;
 
   // Precisa da data atual para preservar o horário quando só o texto mudou.
+  // O isPublished anterior diz se esta edição é a PRIMEIRA publicação.
   const atual = await prisma.news.findUnique({
     where: { id },
-    select: { publishedAt: true },
+    select: { publishedAt: true, isPublished: true },
   });
 
-  await prisma.news.update({
+  const atualizada = await prisma.news.update({
     where: { id },
     data: {
       title: data.title,
@@ -276,7 +291,13 @@ export async function updateNews(
       publishedAt: dataDePublicacao(data.publishedAt, atual?.publishedAt),
       tags: relacaoTags(data.tags, true),
     },
+    select: { title: true, slug: true },
   });
+
+  // Notifica só na transição rascunho → publicada (não a cada edição).
+  if (!atual?.isPublished && data.isPublished) {
+    await avisar(() => notificarNoticia(atualizada));
+  }
 
   revalidateAll();
   redirect("/admin/noticias?ok=updated");
@@ -290,7 +311,13 @@ export async function deleteNews(id: string) {
 
 export async function toggleNewsPublish(id: string, isPublished: boolean) {
   await requireSession();
-  await prisma.news.update({ where: { id }, data: { isPublished } });
+  const n = await prisma.news.update({
+    where: { id },
+    data: { isPublished },
+    select: { title: true, slug: true },
+  });
+  // Publicar pelo atalho da lista também avisa.
+  if (isPublished) await avisar(() => notificarNoticia(n));
   revalidateAll();
 }
 
@@ -337,7 +364,7 @@ export async function createAlert(
   const invalid = validateAlert(data);
   if (invalid) return invalid;
 
-  await prisma.alert.create({
+  const alerta = await prisma.alert.create({
     data: {
       title: data.title,
       date: dataDeInput(data.date) ?? new Date(),
@@ -345,7 +372,11 @@ export async function createAlert(
       description: data.description,
       isActive: data.isActive,
     },
+    select: { title: true, date: true, isActive: true },
   });
+
+  // Alerta inativo não aparece no site; também não avisa.
+  if (alerta.isActive) await avisar(() => notificarAlerta(alerta));
 
   revalidateAll();
   redirect("/admin/alertas?ok=created");
@@ -408,6 +439,8 @@ export async function importAlerts(
     };
   }
 
+  // Importação em massa NÃO dispara push: notificar dezenas de prazos de uma
+  // vez viraria uma enxurrada de avisos. Só o cadastro individual avisa.
   const existentes = await prisma.alert.findMany({ select: { title: true, date: true } });
   const { novos } = filtrarNovos(
     linhas,

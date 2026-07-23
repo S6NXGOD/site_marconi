@@ -102,6 +102,19 @@ enum AlertCategory {
   PRIVADO
 }
 
+/// Inscrição de notificações push de um navegador (PWA instalado no celular).
+/// Guardamos o endpoint e as chaves que o próprio navegador gera; com elas o
+/// servidor manda a notificação de nova notícia ou novo prazo. Sem número nem
+/// nada pessoal — é um canal anônimo, cancelável a qualquer momento.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  /// URL única do serviço de push do navegador — a chave de deduplicação.
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+}
+
 // Prova social da CONPLAN: reels de "Contas Aprovadas" dos municípios.
 // O vídeo entra pelo painel como EMBED (link do reel do Instagram).
 model Approval {
