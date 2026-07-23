@@ -16,6 +16,8 @@ import ShareButton from "@/components/ShareButton";
 import WhatsAppFloat from "@/components/WhatsAppFloat";
 import { getWhatsappContacts } from "@/lib/content";
 import { SITE_URL } from "@/lib/site";
+import { JsonLd } from "@/components/JsonLd";
+import { breadcrumbSchema, noticiaSchema } from "@/lib/schema";
 import { formatarData } from "@/lib/datas";
 import { ConteudoNoticia } from "@/lib/conteudo";
 import { resumoExibicao, resumoRepeteCorpo } from "@/lib/resumo";
@@ -88,11 +90,11 @@ function resumoDe(news: { excerpt: string | null; content: string }) {
 
 /**
  * Imagem do preview (WhatsApp, Facebook, LinkedIn…).
- * Usa a capa da notícia; sem capa, cai no logo do Grupo — assim o link
- * compartilhado nunca aparece sem imagem.
+ * Usa a capa da notícia; sem capa, cai na arte institucional 1200x630 — assim o
+ * link compartilhado nunca aparece sem imagem nem com um recorte torto.
  */
 function imagemDe(coverImage: string | null) {
-  const src = coverImage || "/favicon.jpg";
+  const src = coverImage || "/og.png";
   return src.startsWith("http") ? src : `${SITE_URL}${src}`;
 }
 
@@ -150,8 +152,29 @@ export default async function NoticiaPage({
     getWhatsappContacts(),
   ]);
 
+  const url = `${SITE_URL}/noticias/${news.slug}`;
+
   return (
     <>
+      {/* Dados estruturados: matéria + trilha de navegação. */}
+      <JsonLd
+        data={noticiaSchema({
+          titulo: news.title,
+          descricao: resumoDe(news),
+          url,
+          imagem: imagemDe(news.coverImage),
+          publicadoEm: news.publishedAt,
+          atualizadoEm: news.updatedAt,
+        })}
+      />
+      <JsonLd
+        data={breadcrumbSchema([
+          { nome: "Início", url: SITE_URL },
+          { nome: "Notícias", url: `${SITE_URL}/noticias` },
+          { nome: news.title, url },
+        ])}
+      />
+
       <Header />
 
       <main>

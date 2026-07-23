@@ -18,6 +18,19 @@ export const metadata: Metadata = {
   title: "Notícias | Grupo Dr. Marconi Nunes",
   description:
     "Todas as notícias do Grupo Dr. Marconi Nunes — gestão pública, setor privado e conteúdos gerais.",
+  /*
+   * Canônica sem querystring: as variações (?cat=, ?q=, ?tag=) são filtros da
+   * mesma lista. Sem isso o Google indexa dezenas de quase-duplicatas e dilui a
+   * relevância da página principal de notícias.
+   */
+  alternates: { canonical: "/noticias" },
+  openGraph: {
+    title: "Notícias | Grupo Dr. Marconi Nunes",
+    description:
+      "Gestão pública, setor privado e conteúdos gerais — atualizações do Grupo Dr. Marconi Nunes.",
+    url: "/noticias",
+    type: "website",
+  },
 };
 
 const tabs: { value: string; label: string }[] = [

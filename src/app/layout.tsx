@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import { SITE_URL, SITE_NAME, IS_INDEXABLE } from "@/lib/site";
+import { JsonLd } from "@/components/JsonLd";
+import { organizacaoSchema, siteSchema } from "@/lib/schema";
+import RegisterPWA from "@/components/RegisterPWA";
 import "./globals.css";
 
 // Sans-serif para textos
@@ -27,6 +30,9 @@ export const viewport: Viewport = {
   themeColor: "#0A192F",
 };
 
+const DESCRICAO =
+  "Portal do Grupo Dr. Marconi Nunes: CONPLAN — assessoria a prefeituras e municípios — e Marconi Nunes Contabilidade, com as áreas Fiscal e Tributária, Contábil, RH e Departamento Pessoal e Societária e Legalização.";
+
 export const metadata: Metadata = {
   // Necessário para OpenGraph/Twitter resolverem URLs absolutas.
   metadataBase: new URL(SITE_URL),
@@ -34,35 +40,47 @@ export const metadata: Metadata = {
     default: "Grupo Dr. Marconi Nunes | Gestão Pública & Contabilidade",
     template: "%s | Grupo Dr. Marconi Nunes",
   },
-  applicationName: SITE_NAME,
-  icons: {
-    icon: [{ url: "/favicon.jpg", type: "image/jpeg" }],
-    shortcut: "/favicon.jpg",
-    apple: "/favicon.jpg",
-  },
+  applicationName: `Portal ${SITE_NAME}`,
+  description: DESCRICAO,
+  /*
+   * Ícones e imagem social vêm das convenções de arquivo do App Router
+   * (`app/icon.png`, `app/apple-icon.png`, `app/opengraph-image.png`) — o Next
+   * injeta as tags com o hash certo, o que evita cache de favicon antigo.
+   */
+  manifest: "/site.webmanifest",
+  alternates: { canonical: "/" },
   robots: IS_INDEXABLE
-    ? { index: true, follow: true }
+    ? {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          "max-image-preview": "large",
+          "max-snippet": -1,
+          "max-video-preview": -1,
+        },
+      }
     : { index: false, follow: false }, // não indexa preview/dev
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: SITE_NAME,
+    siteName: `Portal ${SITE_NAME}`,
     url: SITE_URL,
+    title: "Grupo Dr. Marconi Nunes | Gestão Pública & Contabilidade",
+    description: DESCRICAO,
   },
-  description:
-    "Portal institucional do Grupo Dr. Marconi Nunes: CONPLAN — assessoria a prefeituras e municípios — e Marconi Nunes Contabilidade, com as áreas Fiscal e Tributária, Contábil, RH e Departamento Pessoal e Societária e Legalização.",
-  keywords: [
-    "CONPLAN",
-    "gestão pública",
-    "prefeituras",
-    "municípios",
-    "Marconi Nunes",
-    "contabilidade",
-    "área fiscal e tributária",
-    "departamento pessoal",
-    "societária e legalização",
-    "setor privado",
-  ],
+  twitter: {
+    card: "summary_large_image",
+    title: "Grupo Dr. Marconi Nunes | Gestão Pública & Contabilidade",
+    description: DESCRICAO,
+  },
+  authors: [{ name: SITE_NAME, url: SITE_URL }],
+  creator: SITE_NAME,
+  publisher: SITE_NAME,
+  category: "Contabilidade",
+  // Evita o iOS transformar números soltos em links de telefone.
+  formatDetection: { telephone: false, address: false, email: false },
 };
 
 export default function RootLayout({
@@ -72,7 +90,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${playfair.variable}`}>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* Identidade da empresa e do site para os buscadores. */}
+        <JsonLd data={organizacaoSchema()} />
+        <JsonLd data={siteSchema()} />
+        <RegisterPWA />
+      </body>
     </html>
   );
 }
