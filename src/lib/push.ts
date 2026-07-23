@@ -40,9 +40,17 @@ export type PushPayload = {
   body: string;
   /** para onde o clique leva */
   url: string;
+  /** imagem grande de preview (capa da notícia). URL absoluta. */
+  image?: string;
   /** agrupa/atualiza notificações do mesmo assunto */
   tag?: string;
 };
+
+/** Caminho local (/foto.jpg) vira URL absoluta; https fica como está. */
+function urlAbsoluta(caminho: string | null | undefined): string | undefined {
+  if (!caminho) return undefined;
+  return caminho.startsWith("http") ? caminho : `${SITE_URL}${caminho}`;
+}
 
 /**
  * Dispara o payload para TODAS as inscrições. Tolera falha individual e limpa
@@ -79,28 +87,37 @@ export async function enviarPush(payload: PushPayload): Promise<void> {
   }
 }
 
-/** Aviso de nova notícia publicada. */
+/**
+ * Aviso de nova notícia publicada.
+ *
+ * O TÍTULO da notificação é a própria manchete (não um "Nova notícia" genérico):
+ * o iOS acrescenta "de Portal Marconi Nunes" por conta própria, e com a manchete
+ * no título isso lê natural. O corpo é o resumo e a capa entra como preview.
+ */
 export async function notificarNoticia(n: {
   title: string;
   slug: string;
+  excerpt?: string | null;
+  coverImage?: string | null;
 }): Promise<void> {
   await enviarPush({
-    title: "📰 Nova notícia",
-    body: n.title,
+    title: n.title,
+    body: (n.excerpt ?? "").trim() || "Toque para ler no portal.",
     url: `${SITE_URL}/noticias/${n.slug}`,
+    image: urlAbsoluta(n.coverImage || "/og.png"),
     tag: `noticia-${n.slug}`,
   });
 }
 
-/** Aviso de novo prazo/alerta. */
+/** Aviso de novo prazo/alerta — o título é o próprio prazo. */
 export async function notificarAlerta(a: {
   title: string;
   date: Date;
 }): Promise<void> {
   const prazo = deadlineLabel(a.date).text; // "Vence amanhã", "Faltam 5 dias"…
   await enviarPush({
-    title: "🗓️ Novo prazo",
-    body: `${a.title} — ${prazo} (${formatarDataCurta(a.date)})`,
+    title: a.title,
+    body: `🗓️ ${prazo} — ${formatarDataCurta(a.date)}`,
     url: `${SITE_URL}/#alertas`,
     tag: "novo-prazo",
   });

@@ -29,6 +29,8 @@ self.addEventListener("push", (event) => {
     body: dados.body || "",
     icon: "/icon-192.png",
     badge: "/icon-192.png",
+    // Imagem grande de preview (capa da notícia) — exibida onde houver suporte.
+    image: dados.image,
     tag: dados.tag,
     // Reexibe mesmo que já exista uma com a mesma tag.
     renotify: Boolean(dados.tag),

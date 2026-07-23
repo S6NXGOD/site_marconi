@@ -250,7 +250,7 @@ export async function createNews(
       publishedAt: dataDePublicacao(data.publishedAt),
       tags: relacaoTags(data.tags, false),
     },
-    select: { title: true, slug: true, isPublished: true },
+    select: { title: true, slug: true, isPublished: true, excerpt: true, coverImage: true },
   });
 
   // Só notifica se já nasce publicada — rascunho não avisa ninguém.
@@ -291,7 +291,7 @@ export async function updateNews(
       publishedAt: dataDePublicacao(data.publishedAt, atual?.publishedAt),
       tags: relacaoTags(data.tags, true),
     },
-    select: { title: true, slug: true },
+    select: { title: true, slug: true, excerpt: true, coverImage: true },
   });
 
   // Notifica só na transição rascunho → publicada (não a cada edição).
@@ -314,7 +314,7 @@ export async function toggleNewsPublish(id: string, isPublished: boolean) {
   const n = await prisma.news.update({
     where: { id },
     data: { isPublished },
-    select: { title: true, slug: true },
+    select: { title: true, slug: true, excerpt: true, coverImage: true },
   });
   // Publicar pelo atalho da lista também avisa.
   if (isPublished) await avisar(() => notificarNoticia(n));
