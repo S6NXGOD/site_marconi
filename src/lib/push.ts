@@ -122,3 +122,16 @@ export async function notificarAlerta(a: {
     tag: "novo-prazo",
   });
 }
+
+/** Aviso de nova conta aprovada (prova social da CONPLAN). */
+export async function notificarAprovacao(a: {
+  municipality: string;
+  label: string;
+}): Promise<void> {
+  await enviarPush({
+    title: `✅ ${a.label} — ${a.municipality}`,
+    body: "Mais um município com a gestão aprovada pela CONPLAN.",
+    url: `${SITE_URL}/#prova-social`,
+    tag: "conta-aprovada",
+  });
+}

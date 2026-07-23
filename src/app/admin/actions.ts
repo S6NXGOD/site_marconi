@@ -13,7 +13,7 @@ import { tagsDoFormulario } from "@/lib/tags";
 import { autorDe } from "@/lib/news";
 import { dataDeInput, inputDeData } from "@/lib/datas";
 import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
-import { notificarNoticia, notificarAlerta } from "@/lib/push";
+import { notificarNoticia, notificarAlerta, notificarAprovacao } from "@/lib/push";
 
 /** Dispara uma notificação sem nunca derrubar a ação que a originou. */
 async function avisar(fn: () => Promise<void>) {
@@ -94,7 +94,7 @@ export async function createApproval(
   const invalid = validateApproval(data);
   if (invalid) return invalid;
 
-  await prisma.approval.create({
+  const aprovada = await prisma.approval.create({
     data: {
       municipality: data.municipality,
       label: data.label,
@@ -102,7 +102,11 @@ export async function createApproval(
       order: data.order,
       isActive: data.isActive,
     },
+    select: { municipality: true, label: true, isActive: true },
   });
+
+  // Conta inativa não aparece no site; também não avisa.
+  if (aprovada.isActive) await avisar(() => notificarAprovacao(aprovada));
 
   revalidatePath("/");
   revalidatePath("/admin/aprovacoes");
