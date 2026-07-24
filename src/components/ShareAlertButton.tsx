@@ -3,12 +3,14 @@
 import { deadlineLabel } from "@/lib/news";
 import { formatarDataCurta } from "@/lib/datas";
 import { linkWhatsApp, mensagemDoAlerta } from "@/lib/share";
+import type { AlertCategory } from "@prisma/client";
 
 type Props = {
   alert: {
     title: string;
     description: string;
     date: Date | string;
+    category: AlertCategory;
   };
   /** menor, para caber no aviso flutuante */
   compacto?: boolean;
@@ -18,8 +20,11 @@ type Props = {
  * Compartilha UM prazo no WhatsApp.
  *
  * O link `wa.me` sem número abre a lista de contatos: a pessoa escolhe para
- * quem mandar. A mensagem já vai escrita com o prazo, a data e a descrição,
- * mais o link do calendário de obrigações.
+ * quem mandar. A mensagem já vai escrita com o prazo, a data e a descrição.
+ *
+ * O link aponta para a página do SETOR do prazo (/prazos/publico ou
+ * /prazos/privado) — cada uma com sua imagem de preview (a logo pública ou
+ * privada), que é o que o WhatsApp exibe no card do link.
  */
 export default function ShareAlertButton({ alert, compacto = false }: Props) {
   function compartilhar(e: React.MouseEvent) {
@@ -28,13 +33,14 @@ export default function ShareAlertButton({ alert, compacto = false }: Props) {
     e.preventDefault();
     e.stopPropagation();
 
+    const setor = alert.category === "PUBLICO" ? "publico" : "privado";
     const mensagem = mensagemDoAlerta({
       title: alert.title,
       description: alert.description,
       prazo: deadlineLabel(alert.date).text,
       dia: formatarDataCurta(alert.date),
       // origin (e não SITE_URL) para funcionar igual em produção e local.
-      url: `${window.location.origin}/#alertas`,
+      url: `${window.location.origin}/prazos/${setor}`,
     });
 
     window.open(linkWhatsApp(mensagem), "_blank", "noopener,noreferrer");
