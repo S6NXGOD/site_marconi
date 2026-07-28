@@ -109,25 +109,63 @@ export async function notificarNoticia(n: {
   });
 }
 
+type PrazoLembrete = { id: string; title: string; date: Date };
+
+/** "vencem hoje" / "vencem amanhã" / "vencem em 2 dias" / "vencem em 1 semana". */
+function expressaoMarco(dias: number): string {
+  if (dias <= 0) return "vencem hoje";
+  if (dias === 1) return "vencem amanhã";
+  if (dias === 7) return "vencem em 1 semana";
+  return `vencem em ${dias} dias`;
+}
+
+/** Junta os títulos num corpo curto: "IPTU · ISS · DAS +3". */
+function listaTitulos(prazos: PrazoLembrete[], max = 130): string {
+  let texto = "";
+  let usados = 0;
+  for (const p of prazos) {
+    const proximo = texto ? `${texto} · ${p.title}` : p.title;
+    if (usados > 0 && proximo.length > max) break;
+    texto = proximo;
+    usados++;
+  }
+  const resto = prazos.length - usados;
+  return resto > 0 ? `${texto} +${resto}` : texto;
+}
+
 /**
- * Lembrete de um prazo que se aproxima — "Falta 1 semana", "Faltam 2 dias",
- * "Vence amanhã", "Vence hoje". Não é o aviso de "prazo cadastrado": quem
- * dispara é a rotina diária (/api/cron/prazos) nos marcos de dias restantes.
+ * Lembrete dos prazos de UM marco de urgência (mesmo nº de dias restantes).
+ * Quem dispara é a rotina diária (/api/cron/prazos).
  *
- * A tag é POR PRAZO: cada obrigação tem uma única notificação que se ATUALIZA
- * ao se aproximar (7 dias → 2 dias → hoje), em vez de empilhar várias.
+ * - 1 prazo  → notificação detalhada (título = o prazo).
+ * - Vários   → UMA notificação agrupada ("6 prazos vencem hoje" + a lista),
+ *   para não virar uma saraivada quando cai muita coisa no mesmo dia.
+ *
+ * A tag agrupa por marco (prazos-marco-<dias>): a notificação daquele grupo se
+ * ATUALIZA de um dia para o outro em vez de empilhar.
  */
-export async function lembrarPrazo(a: {
-  id: string;
-  title: string;
-  date: Date;
-}): Promise<void> {
-  const prazo = deadlineLabel(a.date).text;
+export async function lembrarPrazos(
+  dias: number,
+  prazos: PrazoLembrete[]
+): Promise<void> {
+  if (prazos.length === 0) return;
+
+  if (prazos.length === 1) {
+    const p = prazos[0];
+    await enviarPush({
+      title: p.title,
+      body: `🗓️ ${deadlineLabel(p.date).text} — ${formatarDataCurta(p.date)}`,
+      url: `${SITE_URL}/#alertas`,
+      tag: `prazo-${p.id}`,
+    });
+    return;
+  }
+
   await enviarPush({
-    title: a.title,
-    body: `🗓️ ${prazo} — ${formatarDataCurta(a.date)}`,
+    title: `🗓️ ${prazos.length} prazos ${expressaoMarco(dias)}`,
+    body: listaTitulos(prazos),
     url: `${SITE_URL}/#alertas`,
-    tag: `prazo-${a.id}`,
+    tag: `prazos-marco-${dias}`,
   });
 }
 

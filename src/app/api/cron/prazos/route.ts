@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { pushConfigurado, lembrarPrazo } from "@/lib/push";
+import { pushConfigurado, lembrarPrazos } from "@/lib/push";
 import { diasAte, inicioDeHoje } from "@/lib/datas";
 
 export const runtime = "nodejs";
@@ -51,16 +51,28 @@ export async function GET(request: Request) {
     select: { id: true, title: true, date: true },
   });
 
-  let enviados = 0;
-  for (const p of prazos) {
-    if (!MARCOS.includes(diasAte(p.date))) continue;
+  // Agrupa por marco de urgência: os prazos que caem no mesmo marco viram UMA
+  // notificação, em vez de uma por prazo (evita a saraivada de vários no dia).
+  const grupos = MARCOS.map((dias) => ({
+    dias,
+    prazos: prazos.filter((p) => diasAte(p.date) === dias),
+  })).filter((g) => g.prazos.length > 0);
+
+  let notificacoes = 0;
+  let prazosAvisados = 0;
+  for (const g of grupos) {
     try {
-      await lembrarPrazo(p);
-      enviados++;
+      await lembrarPrazos(g.dias, g.prazos);
+      notificacoes++;
+      prazosAvisados += g.prazos.length;
     } catch (e) {
-      console.error("[cron/prazos] falha ao lembrar:", p.id, e);
+      console.error("[cron/prazos] falha no marco", g.dias, e);
     }
   }
 
-  return NextResponse.json({ verificados: prazos.length, enviados });
+  return NextResponse.json({
+    verificados: prazos.length,
+    prazosAvisados,
+    notificacoes,
+  });
 }
