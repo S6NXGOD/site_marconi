@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
+import { creditoDaFonte } from "@/lib/credito-fonte";
 import { Prisma, type NewsCategory } from "@prisma/client";
 import {
   autorDe,
@@ -304,7 +305,7 @@ export default async function NoticiaPage({
                     <span className="font-semibold text-conplan">
                       {news.sourceName ? `Fonte: ${news.sourceName}` : "Fonte"}
                     </span>
-                    . Conteúdo publicado originalmente pela assessoria do órgão.
+                    . {creditoDaFonte(news.sourceName, news.sourceUrl)}
                   </p>
                   <a
                     href={news.sourceUrl}
