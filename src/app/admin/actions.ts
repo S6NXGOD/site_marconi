@@ -384,6 +384,17 @@ export async function createAlert(
   redirect("/admin/alertas?ok=created");
 }
 
+/** Exclui vários alertas de uma vez. Devolve quantos saíram. */
+export async function deleteAlerts(ids: string[]): Promise<{ removidos: number }> {
+  await requireSession();
+  const limpos = ids.filter((id) => typeof id === "string" && id.length > 0);
+  if (limpos.length === 0) return { removidos: 0 };
+  const r = await prisma.alert.deleteMany({ where: { id: { in: limpos } } });
+  revalidateAll();
+  revalidatePath("/admin/alertas");
+  return { removidos: r.count };
+}
+
 export async function updateAlert(
   id: string,
   _prev: AlertFormState,

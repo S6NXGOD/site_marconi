@@ -1,16 +1,8 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { formatarDiaPrazo, inicioDeHoje } from "@/lib/datas";
-import {
-  alertCategoryLabels,
-  alertCategoryBadgeClasses,
-  deadlineLabel,
-  isUrgent,
-} from "@/lib/news";
-import {
-  DeleteAlertButton,
-  ToggleAlertActiveButton,
-} from "@/components/admin/AlertRowActions";
+import { inicioDeHoje } from "@/lib/datas";
+import { isUrgent } from "@/lib/news";
+import AlertsAdminList from "@/components/admin/AlertsAdminList";
 
 const okMessages: Record<string, string> = {
   created: "Alerta criado com sucesso.",
@@ -30,19 +22,6 @@ function mensagemImportacao(n: string | undefined, ign: string | undefined): str
   }
   return base;
 }
-
-/** Cor da barra lateral do card — é o que dá a leitura da lista de relance. */
-const toneBar = {
-  danger: "bg-red-500",
-  warning: "bg-amber-500",
-  neutral: "bg-slate-300",
-} as const;
-
-const toneChip = {
-  danger: "bg-red-50 text-red-700 ring-red-200",
-  warning: "bg-amber-50 text-amber-700 ring-amber-200",
-  neutral: "bg-slate-100 text-slate-500 ring-slate-200",
-} as const;
 
 type Aba = "avencer" | "vencidos";
 
@@ -111,6 +90,15 @@ export default async function AlertasAdminPage({
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12" />
             </svg>
             Importar CSV
+          </Link>
+          <Link
+            href="/admin/alertas/agenda"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full border border-slate-300 px-5 text-sm font-semibold text-conplan transition-colors hover:border-marconi hover:text-marconi sm:w-auto"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h3" />
+            </svg>
+            Importar Agenda
           </Link>
           <Link
             href="/admin/alertas/novo"
@@ -213,83 +201,7 @@ export default async function AlertasAdminPage({
           )}
         </div>
       ) : (
-        <ul className="space-y-2.5">
-          {alerts.map((a) => {
-            const prazo = deadlineLabel(a.date);
-            const venceHoje = prazo.days === 0;
-
-            return (
-              <li
-                key={a.id}
-                className={`group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:border-slate-300 hover:shadow-md ${
-                  a.isActive ? "" : "opacity-70"
-                }`}
-              >
-                {/* Barra de urgência: dá a leitura da lista de relance, antes
-                    mesmo de ler o texto. */}
-                <span
-                  aria-hidden
-                  className={`absolute inset-y-0 left-0 w-1 ${toneBar[prazo.tone]}`}
-                />
-
-                <div className="pl-4 pr-3 py-3.5 sm:pl-5 sm:pr-4 sm:py-4">
-                  <div className="lg:flex lg:items-start lg:gap-5">
-                    <div className="min-w-0 lg:flex-1">
-                      <div className="flex flex-wrap items-center gap-1.5">
-                        <span
-                          className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-bold ring-1 ${toneChip[prazo.tone]}`}
-                        >
-                          {venceHoje && (
-                            <span className="relative flex h-1.5 w-1.5">
-                              <span aria-hidden className="absolute inline-flex h-full w-full rounded-full bg-red-400 animate-soft-ping" />
-                              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
-                            </span>
-                          )}
-                          {prazo.text}
-                        </span>
-                        <time className="text-[11px] font-medium uppercase tracking-wide text-slate-400">
-                          {formatarDiaPrazo(a.date)}
-                        </time>
-                        <span
-                          className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${alertCategoryBadgeClasses[a.category]}`}
-                        >
-                          {alertCategoryLabels[a.category]}
-                        </span>
-                      </div>
-
-                      <Link
-                        href={`/admin/alertas/${a.id}/editar`}
-                        className="mt-1.5 block text-sm font-semibold leading-snug text-conplan transition-colors hover:text-marconi sm:text-[15px]"
-                      >
-                        {a.title}
-                      </Link>
-
-                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">
-                        {a.description}
-                      </p>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 lg:mt-0 lg:shrink-0 lg:border-0 lg:pt-0">
-                      <ToggleAlertActiveButton id={a.id} isActive={a.isActive} />
-                      <div className="flex items-center gap-1">
-                        <Link
-                          href={`/admin/alertas/${a.id}/editar`}
-                          className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-conplan transition-colors hover:bg-conplan-soft"
-                        >
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" />
-                          </svg>
-                          Editar
-                        </Link>
-                        <DeleteAlertButton id={a.id} title={a.title} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ul>
+        <AlertsAdminList alerts={alerts} />
       )}
 
       {aba === "vencidos" && alerts.length > 0 && (
