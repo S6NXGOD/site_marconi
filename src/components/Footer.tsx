@@ -143,12 +143,27 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-8 text-xs text-slate-500 sm:flex-row">
-          <p>
-            © {new Date().getFullYear()} Grupo Dr. Marconi Nunes. Todos os
-            direitos reservados.
-          </p>
-          <p>Gestão Pública · Contabilidade · Setor Privado</p>
+        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-slate-500 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1">
+            <p>
+              © {new Date().getFullYear()} Grupo Dr. Marconi Nunes · Todos os
+              direitos reservados.
+            </p>
+            <p className="text-slate-600">
+              Marconi Nunes Contabilidade — CNPJ 21.066.608/0001-99
+              <span className="mx-1.5" aria-hidden>·</span>
+              CONPLAN Contabilidade LTDA — CNPJ 10.682.231/0001-86
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-3">
+            <Link href="/termos" className="transition-colors hover:text-marconi-light">
+              Termos de Uso
+            </Link>
+            <span className="text-slate-600" aria-hidden>·</span>
+            <Link href="/privacidade" className="transition-colors hover:text-marconi-light">
+              Política de Privacidade
+            </Link>
+          </div>
         </div>
 
         {/* Crédito do desenvolvedor */}

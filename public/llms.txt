@@ -1,0 +1,30 @@
+# Grupo Dr. Marconi Nunes
+
+> Contabilidade e gestão pública no Piauí, com duas frentes: CONPLAN — assessoria e consultoria a prefeituras e municípios — e Marconi Nunes Contabilidade, para empresas do setor privado.
+
+- Site: https://marconinunes.com.br
+- Localização: Piauí, Brasil
+- Contato: contato@marconinunes.com.br
+- Entidades: Marconi Nunes Contabilidade (CNPJ 21.066.608/0001-99, setor privado) e CONPLAN Contabilidade LTDA (CNPJ 10.682.231/0001-86, gestão pública)
+
+## Áreas de atuação
+
+- CONPLAN — Gestão Pública: gestão de convênios, prestação de contas de governo, assessoria a prefeituras e câmaras municipais.
+- Marconi Nunes — Setor Privado: área fiscal e tributária, área contábil, RH e departamento pessoal, área societária e legalização.
+
+## Conteúdo do portal
+
+- [Notícias](https://marconinunes.com.br/noticias): contabilidade, tributário, reforma tributária e gestão pública.
+- [Alertas & Prazos](https://marconinunes.com.br/#alertas): calendário de obrigações fiscais e contábeis (setor público e privado).
+- [Áreas de Atuação](https://marconinunes.com.br/#areas-de-atuacao): detalhamento dos serviços das duas frentes.
+- [Contas Aprovadas](https://marconinunes.com.br/#prova-social): municípios com contas aprovadas pelo Tribunal de Contas do Estado do Piauí (TCE-PI).
+- [Fale Conosco](https://marconinunes.com.br/#contato)
+
+## Legal
+
+- [Termos de Uso](https://marconinunes.com.br/termos)
+- [Política de Privacidade](https://marconinunes.com.br/privacidade)
+
+## Detalhes
+
+- [Contexto completo](https://marconinunes.com.br/llms-full.txt)

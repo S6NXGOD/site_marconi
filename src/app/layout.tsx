@@ -30,8 +30,9 @@ export const viewport: Viewport = {
   themeColor: "#0A192F",
 };
 
+// Entre 120 e 160 caracteres: acima disso o Google trunca nos resultados.
 const DESCRICAO =
-  "Portal do Grupo Dr. Marconi Nunes: CONPLAN — assessoria a prefeituras e municípios — e Marconi Nunes Contabilidade, com as áreas Fiscal e Tributária, Contábil, RH e Departamento Pessoal e Societária e Legalização.";
+  "Grupo Dr. Marconi Nunes: contabilidade e gestão pública no Piauí. Assessoria a prefeituras (CONPLAN) e empresas — áreas fiscal, contábil, RH e societária.";
 
 export const metadata: Metadata = {
   // Necessário para OpenGraph/Twitter resolverem URLs absolutas.

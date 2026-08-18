@@ -22,6 +22,24 @@ export function organizacaoSchema() {
     "@id": `${SITE_URL}/#organizacao`,
     name: SITE_NAME,
     alternateName: ["Marconi Nunes Contabilidade", "CONPLAN"],
+    // O Grupo é a marca guarda-chuva de DUAS pessoas jurídicas distintas, cada
+    // uma com seu CNPJ — declaradas como subOrganization. O Google identifica
+    // as entidades jurídicas reais por trás do site, o que reforça o E-E-A-T.
+    subOrganization: [
+      {
+        "@type": "AccountingService",
+        name: "Marconi Nunes Contabilidade",
+        taxID: "21.066.608/0001-99",
+        description: "Contabilidade para o setor privado (empresas).",
+      },
+      {
+        "@type": "AccountingService",
+        name: "CONPLAN Contabilidade LTDA",
+        taxID: "10.682.231/0001-86",
+        description:
+          "Assessoria e consultoria em gestão pública a prefeituras e municípios.",
+      },
+    ],
     url: SITE_URL,
     logo: {
       "@type": "ImageObject",
