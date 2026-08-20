@@ -13,6 +13,19 @@ export type ApprovalItem = {
 
 export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const pausadoRef = useRef(false);
+  const retomarRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Pausa a rolagem automática por um tempo após uma interação manual (arrastar,
+  // seta, roda do mouse) e retoma sozinha quando a pessoa para de mexer. É o que
+  // impede o auto-scroll de "brigar" com o gesto/seta.
+  function pausarPorInteracao(ms = 2500) {
+    pausadoRef.current = true;
+    clearTimeout(retomarRef.current);
+    retomarRef.current = setTimeout(() => {
+      pausadoRef.current = false;
+    }, ms);
+  }
 
   // Só entram no site os cards com vídeo reconhecido — o card É a publicação.
   const cards = useMemo(
@@ -28,16 +41,18 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
   const loop = cards.length > 1 ? [...cards, ...cards] : cards;
 
   // ——— Rolagem automática contínua (marquee) ———
-  // rAF empurra a rolagem devagar; pausa no hover/toque/foco para a pessoa
-  // assistir e clicar. Respeita quem prefere menos animação.
+  // Anima a posição num acumulador FLOAT e ESCREVE em scrollLeft (não usa +=,
+  // que perde o sub-pixel ao reler e trava a rolagem). Tempo-based: velocidade
+  // igual em telas de 60 e 120 Hz. Pausa no hover (mouse), toque, arrasto e foco.
   useEffect(() => {
     const el = trackRef.current;
     if (!el || cards.length < 2) return;
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
-    const VELOCIDADE = 0.4; // px por frame (~24px/s) — suave
+    const VEL = 0.035; // px por ms (~35 px/s) — glide suave
     let raf = 0;
-    let pausado = false;
+    let pos = el.scrollLeft;
+    let ultimo = 0;
 
     // Período exato do loop = distância do 1º card da 2ª leva até o 1º de todos.
     const medirPeriodo = () => {
@@ -48,36 +63,50 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
     };
     let periodo = medirPeriodo();
 
-    const passo = () => {
-      if (!pausado) {
-        el.scrollLeft += VELOCIDADE;
-        if (periodo > 0 && el.scrollLeft >= periodo) el.scrollLeft -= periodo;
+    const passo = (agora: number) => {
+      const dt = ultimo ? Math.min(agora - ultimo, 50) : 16;
+      ultimo = agora;
+      if (pausadoRef.current || periodo <= 0) {
+        pos = el.scrollLeft; // acompanha a rolagem manual enquanto pausado
+      } else {
+        pos += VEL * dt;
+        if (pos >= periodo) pos -= periodo;
+        el.scrollLeft = pos;
       }
       raf = requestAnimationFrame(passo);
     };
     raf = requestAnimationFrame(passo);
 
-    const pausar = () => (pausado = true);
-    const retomar = () => (pausado = false);
+    // Hover só de MOUSE (no toque o pause é via pausarPorInteracao).
+    const entrar = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") pausadoRef.current = true;
+    };
+    const sair = (e: PointerEvent) => {
+      if (e.pointerType === "mouse") pausadoRef.current = false;
+    };
+    const focar = () => (pausadoRef.current = true);
+    const desfocar = () => (pausadoRef.current = false);
+    const interagir = () => pausarPorInteracao();
     const remedir = () => (periodo = medirPeriodo());
 
-    el.addEventListener("mouseenter", pausar);
-    el.addEventListener("mouseleave", retomar);
-    el.addEventListener("pointerdown", pausar);
-    el.addEventListener("focusin", pausar);
-    el.addEventListener("focusout", retomar);
-    window.addEventListener("pointerup", retomar);
+    el.addEventListener("pointerenter", entrar);
+    el.addEventListener("pointerleave", sair);
+    el.addEventListener("focusin", focar);
+    el.addEventListener("focusout", desfocar);
+    el.addEventListener("touchstart", interagir, { passive: true });
+    el.addEventListener("wheel", interagir, { passive: true });
     window.addEventListener("resize", remedir);
 
     return () => {
       cancelAnimationFrame(raf);
-      el.removeEventListener("mouseenter", pausar);
-      el.removeEventListener("mouseleave", retomar);
-      el.removeEventListener("pointerdown", pausar);
-      el.removeEventListener("focusin", pausar);
-      el.removeEventListener("focusout", retomar);
-      window.removeEventListener("pointerup", retomar);
+      el.removeEventListener("pointerenter", entrar);
+      el.removeEventListener("pointerleave", sair);
+      el.removeEventListener("focusin", focar);
+      el.removeEventListener("focusout", desfocar);
+      el.removeEventListener("touchstart", interagir);
+      el.removeEventListener("wheel", interagir);
       window.removeEventListener("resize", remedir);
+      clearTimeout(retomarRef.current);
     };
   }, [cards.length]);
 
@@ -86,6 +115,8 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
   function scroll(dir: -1 | 1) {
     const el = trackRef.current;
     if (!el) return;
+    // Pausa o auto-scroll para ele não sobrescrever o scrollBy suave da seta.
+    pausarPorInteracao();
     const card = el.querySelector("article");
     const step = card ? card.clientWidth + 24 : el.clientWidth * 0.8;
     el.scrollBy({ left: dir * step, behavior: "smooth" });
