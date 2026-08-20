@@ -106,6 +106,36 @@ export function mensagemDoAlerta({
   return partes.join("\n\n");
 }
 
+/** Chamada do compartilhamento de CONTA APROVADA — leva à prova social. */
+export const CHAMADA_APROVACAO =
+  "*Conheça o trabalho de gestão pública do Grupo Dr. Marconi Nunes:*";
+
+/**
+ * Mensagem de uma Conta Aprovada no WhatsApp:
+ *
+ *   *Contas Aprovadas — Tanque do Piauí*
+ *   ✅ Mais um município com a gestão aprovada, com a CONPLAN.
+ *   *Conheça o trabalho de gestão pública do Grupo Dr. Marconi Nunes:*
+ *   link
+ */
+export function mensagemDaAprovacao({
+  municipality,
+  label,
+  url,
+}: {
+  municipality: string;
+  label?: string | null;
+  url: string;
+}): string {
+  const rotulo = label?.trim() || "Contas Aprovadas";
+  return [
+    `*${semFormatacao(rotulo)} — ${semFormatacao(municipality)}*`,
+    "✅ Mais um município com a gestão aprovada, com a CONPLAN.",
+    CHAMADA_APROVACAO,
+    url,
+  ].join("\n\n");
+}
+
 /** Link que abre o WhatsApp já com a mensagem escrita (app no celular, Web no desktop). */
 export function linkWhatsApp(mensagem: string): string {
   return `https://wa.me/?text=${encodeURIComponent(mensagem)}`;

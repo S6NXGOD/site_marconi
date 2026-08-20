@@ -2,6 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { toEmbedUrl } from "@/lib/embed";
+import ShareApprovalButton from "./ShareApprovalButton";
 
 export type ApprovalItem = {
   id: string;
@@ -102,10 +103,13 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
                   </p>
                 </div>
 
-                <span className="inline-flex shrink-0 items-center gap-1.5 rounded border border-marconi/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-marconi-light">
-                  <span className="h-1 w-1 rounded-full bg-marconi-light" />
-                  CONPLAN
-                </span>
+                <div className="flex shrink-0 items-center gap-1.5">
+                  <span className="inline-flex items-center gap-1.5 rounded border border-marconi/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-marconi-light">
+                    <span className="h-1 w-1 rounded-full bg-marconi-light" />
+                    CONPLAN
+                  </span>
+                  <ShareApprovalButton approval={item} />
+                </div>
               </div>
 
               {/* A publicação real do Instagram */}
