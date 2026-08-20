@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { toEmbedUrl } from "@/lib/embed";
 import ShareApprovalButton from "./ShareApprovalButton";
 
@@ -23,6 +23,64 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
     [items]
   );
 
+  // Para o marquee emendar sem salto, os cards são renderizados DUAS vezes: ao
+  // passar da primeira metade, a rolagem volta para o ponto equivalente.
+  const loop = cards.length > 1 ? [...cards, ...cards] : cards;
+
+  // ——— Rolagem automática contínua (marquee) ———
+  // rAF empurra a rolagem devagar; pausa no hover/toque/foco para a pessoa
+  // assistir e clicar. Respeita quem prefere menos animação.
+  useEffect(() => {
+    const el = trackRef.current;
+    if (!el || cards.length < 2) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const VELOCIDADE = 0.4; // px por frame (~24px/s) — suave
+    let raf = 0;
+    let pausado = false;
+
+    // Período exato do loop = distância do 1º card da 2ª leva até o 1º de todos.
+    const medirPeriodo = () => {
+      const arts = el.querySelectorAll<HTMLElement>("article");
+      return arts.length > cards.length
+        ? arts[cards.length].offsetLeft - arts[0].offsetLeft
+        : el.scrollWidth / 2;
+    };
+    let periodo = medirPeriodo();
+
+    const passo = () => {
+      if (!pausado) {
+        el.scrollLeft += VELOCIDADE;
+        if (periodo > 0 && el.scrollLeft >= periodo) el.scrollLeft -= periodo;
+      }
+      raf = requestAnimationFrame(passo);
+    };
+    raf = requestAnimationFrame(passo);
+
+    const pausar = () => (pausado = true);
+    const retomar = () => (pausado = false);
+    const remedir = () => (periodo = medirPeriodo());
+
+    el.addEventListener("mouseenter", pausar);
+    el.addEventListener("mouseleave", retomar);
+    el.addEventListener("pointerdown", pausar);
+    el.addEventListener("focusin", pausar);
+    el.addEventListener("focusout", retomar);
+    window.addEventListener("pointerup", retomar);
+    window.addEventListener("resize", remedir);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      el.removeEventListener("mouseenter", pausar);
+      el.removeEventListener("mouseleave", retomar);
+      el.removeEventListener("pointerdown", pausar);
+      el.removeEventListener("focusin", pausar);
+      el.removeEventListener("focusout", retomar);
+      window.removeEventListener("pointerup", retomar);
+      window.removeEventListener("resize", remedir);
+    };
+  }, [cards.length]);
+
   if (cards.length === 0) return null;
 
   function scroll(dir: -1 | 1) {
@@ -34,7 +92,7 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
   }
 
   return (
-    <section id="prova-social" className="bg-cloud py-20 sm:py-24">
+    <section id="prova-social" className="overflow-hidden bg-cloud py-20 sm:py-24">
       <div className="section-shell">
         {/* Cabeçalho */}
         <div className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
@@ -78,18 +136,20 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Trilho */}
+      {/* Trilho (largura total) + desvanecer nas bordas */}
+      <div className="relative mt-10">
         <div
           ref={trackRef}
-          className="-mx-6 mt-10 flex snap-x snap-mandatory gap-6 overflow-x-auto px-6 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex gap-6 overflow-x-auto px-6 pb-4 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
-          {cards.map(({ item, embed }) => (
+          {loop.map(({ item, embed }, i) => (
             <article
-              key={item.id}
-              // 326px é a largura mínima do embed do Instagram —
-              // abaixo disso ele renderiza quebrado.
-              className="w-[326px] shrink-0 snap-start overflow-hidden rounded-2xl bg-white shadow-elegant ring-1 ring-slate-200 sm:w-[340px]"
+              key={`${item.id}-${i}`}
+              // 326px é a largura mínima do embed do Instagram — abaixo disso ele
+              // renderiza quebrado.
+              className="flex w-[326px] shrink-0 flex-col overflow-hidden rounded-2xl bg-white shadow-elegant ring-1 ring-slate-200 sm:w-[340px]"
             >
               {/* Faixa da marca */}
               <div className="flex items-start justify-between gap-3 bg-conplan px-4 py-3">
@@ -103,29 +163,35 @@ export default function ApprovalsShowcase({ items }: { items: ApprovalItem[] }) 
                   </p>
                 </div>
 
-                <div className="flex shrink-0 items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1.5 rounded border border-marconi/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-marconi-light">
-                    <span className="h-1 w-1 rounded-full bg-marconi-light" />
-                    CONPLAN
-                  </span>
-                  <ShareApprovalButton approval={item} />
-                </div>
+                <span className="inline-flex shrink-0 items-center gap-1.5 rounded border border-marconi/50 px-2 py-1 text-[10px] font-semibold uppercase tracking-wider text-marconi-light">
+                  <span className="h-1 w-1 rounded-full bg-marconi-light" />
+                  CONPLAN
+                </span>
               </div>
 
               {/* A publicação real do Instagram */}
               <iframe
                 src={embed}
                 title={`Publicação — ${item.municipality}`}
-                // lazy: os embeds só carregam quando a seção entra na tela
+                // lazy: os embeds só carregam quando entram na tela
                 loading="lazy"
                 scrolling="no"
                 allow="autoplay; encrypted-media; picture-in-picture; web-share"
                 allowFullScreen
                 className="block h-[560px] w-full border-0 bg-white sm:h-[600px]"
               />
+
+              {/* Rodapé — compartilhar bem visível */}
+              <div className="border-t border-slate-100 p-3">
+                <ShareApprovalButton approval={item} />
+              </div>
             </article>
           ))}
         </div>
+
+        {/* Desvanecer as bordas para dar o ar de "rolagem infinita". */}
+        <div className="pointer-events-none absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-cloud to-transparent sm:w-16" />
+        <div className="pointer-events-none absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-cloud to-transparent sm:w-16" />
       </div>
     </section>
   );

@@ -106,16 +106,16 @@ export function mensagemDoAlerta({
   return partes.join("\n\n");
 }
 
-/** Chamada do compartilhamento de CONTA APROVADA — leva à prova social. */
+/** Chamada do compartilhamento de CONTA APROVADA — convida a conhecer o portal. */
 export const CHAMADA_APROVACAO =
-  "*Conheça o trabalho de gestão pública do Grupo Dr. Marconi Nunes:*";
+  "*Conheça o maior portal de contabilidade do Piauí — Grupo Dr. Marconi Nunes:*";
 
 /**
  * Mensagem de uma Conta Aprovada no WhatsApp:
  *
- *   *Contas Aprovadas — Tanque do Piauí*
- *   ✅ Mais um município com a gestão aprovada, com a CONPLAN.
- *   *Conheça o trabalho de gestão pública do Grupo Dr. Marconi Nunes:*
+ *   *✅ Contas Aprovadas — Tanque do Piauí*
+ *   Mais um município com a gestão pública aprovada, com a assessoria da CONPLAN.
+ *   *Conheça o maior portal de contabilidade do Piauí — Grupo Dr. Marconi Nunes:*
  *   link
  */
 export function mensagemDaAprovacao({
@@ -129,8 +129,8 @@ export function mensagemDaAprovacao({
 }): string {
   const rotulo = label?.trim() || "Contas Aprovadas";
   return [
-    `*${semFormatacao(rotulo)} — ${semFormatacao(municipality)}*`,
-    "✅ Mais um município com a gestão aprovada, com a CONPLAN.",
+    `*✅ ${semFormatacao(rotulo)} — ${semFormatacao(municipality)}*`,
+    "Mais um município com a gestão pública aprovada, com a assessoria da CONPLAN.",
     CHAMADA_APROVACAO,
     url,
   ].join("\n\n");
