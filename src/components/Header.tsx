@@ -117,25 +117,19 @@ export default function Header() {
         {/* Logos */}
         <Link href="/" className="flex shrink-0 flex-row items-center gap-2.5 sm:gap-3">
           <span className="relative block h-11 w-[77px] sm:h-12 sm:w-[84px]">
+            {/* Uma imagem só. A versão branca (sobre o topo escuro) é a
+                colorida com filtro: brightness(0) invert(1) pinta tudo de
+                branco, e a troca anima suave. Antes eram dois arquivos — um
+                download a mais e um alt="" que as ferramentas de SEO acusam
+                como "imagem sem texto alternativo". */}
             <Image
               src="/logo_marconinunes.png"
               alt="Marconi Nunes Contabilidade"
               fill
               sizes="84px"
               priority
-              className={`object-contain transition-opacity duration-300 ${
-                solid ? "opacity-100" : "opacity-0"
-              }`}
-            />
-            <Image
-              src="/logo_marconinunes_branca.png"
-              alt=""
-              aria-hidden
-              fill
-              sizes="84px"
-              priority
-              className={`object-contain transition-opacity duration-300 ${
-                solid ? "opacity-0" : "opacity-100"
+              className={`object-contain transition-[filter] duration-300 ${
+                solid ? "[filter:brightness(1)_invert(0)]" : "[filter:brightness(0)_invert(1)]"
               }`}
             />
           </span>
@@ -216,7 +210,7 @@ export default function Header() {
                               <span className="block text-sm font-semibold text-conplan">
                                 {child.label}
                               </span>
-                              <span className="mt-0.5 block text-xs leading-snug text-slate-400">
+                              <span className="mt-0.5 block text-xs leading-snug text-slate-500">
                                 {child.description}
                               </span>
                             </a>
@@ -247,9 +241,16 @@ export default function Header() {
             })}
           </ul>
 
+          {/* Sobre o topo escuro, dourado claro com letra azul; com o
+              cabeçalho branco, dourado fechado com letra branca — cada um é o
+              que tem contraste no seu fundo (ver tailwind.config). */}
           <a
             href="/#contato"
-            className="shrink-0 whitespace-nowrap rounded-full bg-marconi px-5 py-2.5 text-sm font-semibold text-white shadow-gold transition-all duration-300 hover:-translate-y-0.5 hover:bg-marconi-dark"
+            className={`shrink-0 whitespace-nowrap rounded-full px-5 py-2.5 text-sm font-semibold shadow-gold transition-all duration-300 hover:-translate-y-0.5 ${
+              solid
+                ? "bg-marconi text-white hover:bg-marconi-dark"
+                : "bg-marconi-light text-conplan hover:bg-white"
+            }`}
           >
             Fale Conosco
           </a>

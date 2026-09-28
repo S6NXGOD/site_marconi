@@ -157,7 +157,7 @@ export default async function NoticiasPage({
                     href={linkDaAba(t.value, q)}
                     className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
                       active === t.value
-                        ? "bg-marconi text-white shadow-gold"
+                        ? "bg-marconi-light text-conplan shadow-gold"
                         : "text-slate-300 hover:text-white"
                     }`}
                   >
@@ -250,7 +250,7 @@ export default async function NoticiasPage({
                           {resumoExibicao(item.excerpt, item.content, 180)}
                         </p>
                         <div className="mt-4 flex items-center justify-between">
-                          <time className="text-xs text-slate-400">
+                          <time className="text-xs text-slate-500">
                             {formatarData(item.publishedAt)}
                           </time>
                           <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-marconi">

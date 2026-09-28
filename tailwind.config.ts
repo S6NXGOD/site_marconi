@@ -19,10 +19,19 @@ const config: Config = {
           soft: "#F4F7FB", // fundo azul muito sutil
         },
         // Marconi Nunes — Setor Comercial
+        //
+        // Nenhum dourado é legível nos dois fundos do site ao mesmo tempo:
+        // sobre o branco ele precisa ser escuro, sobre o azul-marinho, claro.
+        //  - DEFAULT: para FUNDO CLARO — texto dourado sobre branco e botão
+        //    dourado com letra branca (4,85:1). O antigo #B8942E dava 2,87:1,
+        //    abaixo do mínimo de 4,5:1, e o Lighthouse reprovava centenas de
+        //    elementos: link, data, selo, botão.
+        //  - light: para FUNDO ESCURO — texto dourado e botão com letra
+        //    azul-marinho (8,4:1).
         marconi: {
-          DEFAULT: "#B8942E", // Dourado/Mostarda escurecido
-          light: "#D4AF37", // Dourado original
-          dark: "#8A6E1F",
+          DEFAULT: "#8A6E1F",
+          light: "#D4AF37",
+          dark: "#765E1A", // hover do DEFAULT
         },
         ink: "#0B1220",
         cloud: "#F8FAFC",
@@ -34,7 +43,7 @@ const config: Config = {
       },
       boxShadow: {
         elegant: "0 20px 50px -12px rgba(10, 25, 47, 0.25)",
-        gold: "0 18px 40px -12px rgba(184, 148, 46, 0.45)",
+        gold: "0 18px 40px -12px rgba(138, 110, 31, 0.4)",
       },
       keyframes: {
         "fade-up": {

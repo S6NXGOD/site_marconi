@@ -88,7 +88,9 @@ export default function NewsCarousel({ items }: { items: NewsItem[] }) {
             href="/noticias"
             className="inline-flex shrink-0 items-center gap-1.5 text-sm font-semibold text-marconi transition-colors hover:text-marconi-dark"
           >
-            Ver todas
+            {/* Texto que diz para onde o link leva — "Ver todas" sozinho é
+                âncora genérica para o Google e para leitor de tela. */}
+            Todas as notícias
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
@@ -132,7 +134,7 @@ export default function NewsCarousel({ items }: { items: NewsItem[] }) {
                 <h3 className="line-clamp-3 font-serif text-base font-semibold leading-snug text-conplan transition-colors group-hover:text-marconi">
                   {item.title}
                 </h3>
-                <time className="mt-auto pt-3 text-xs text-slate-400">
+                <time className="mt-auto pt-3 text-xs text-slate-500">
                   {formatarData(item.publishedAt)}
                 </time>
               </div>

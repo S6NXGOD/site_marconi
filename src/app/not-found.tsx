@@ -14,7 +14,7 @@ export default function NotFound() {
       <main className="flex min-h-[70vh] items-center bg-conplan px-6 pt-28 pb-20">
         <div className="section-shell">
           <div className="mx-auto max-w-lg text-center">
-            <p className="font-serif text-6xl font-bold text-marconi sm:text-7xl">
+            <p className="font-serif text-6xl font-bold text-marconi-light sm:text-7xl">
               404
             </p>
             <h1 className="mt-4 font-serif text-2xl font-semibold text-white sm:text-3xl">
@@ -27,7 +27,7 @@ export default function NotFound() {
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link
                 href="/"
-                className="rounded-full bg-marconi px-6 py-3 text-sm font-semibold text-white shadow-gold transition-all hover:-translate-y-0.5 hover:bg-marconi-light"
+                className="rounded-full bg-marconi-light px-6 py-3 text-sm font-semibold text-conplan shadow-gold transition-all hover:-translate-y-0.5 hover:bg-white"
               >
                 Voltar ao início
               </Link>

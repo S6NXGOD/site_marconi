@@ -176,7 +176,7 @@ export default function ShareDialog({ aberto, onFechar, mensagem, onCompartilhar
           </button>
         </div>
 
-        <p className="mt-3 text-[11px] leading-snug text-slate-400">
+        <p className="mt-3 text-[11px] leading-snug text-slate-500">
           Na primeira vez, o navegador pergunta se pode abrir o WhatsApp — marque
           &quot;sempre permitir&quot; para ir direto nas próximas.
         </p>

@@ -111,7 +111,7 @@ function SuccessPanel({
 
       {state.protocol && (
         <div className="mt-6 rounded-xl border border-dashed border-slate-300 bg-cloud px-5 py-3">
-          <p className="text-[11px] font-medium uppercase tracking-widest text-slate-400">
+          <p className="text-[11px] font-medium uppercase tracking-widest text-slate-500">
             Protocolo
           </p>
           <p className="mt-0.5 font-serif text-lg font-semibold tracking-wider text-conplan">
@@ -132,7 +132,7 @@ function SuccessPanel({
             )}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#25D366] px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-[#1FB855] sm:w-auto"
+            className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#14863E] px-6 py-3 text-sm font-semibold text-white shadow-lg transition-all hover:-translate-y-0.5 hover:bg-[#0F7234] sm:w-auto"
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
               <path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.87 9.87 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.02h-.01a8.2 8.2 0 0 1-4.18-1.15l-.3-.18-3.11.82.83-3.04-.2-.31a8.17 8.17 0 0 1-1.25-4.36c0-4.54 3.7-8.23 8.24-8.23 2.2 0 4.27.86 5.83 2.41a8.19 8.19 0 0 1 2.41 5.83c0 4.54-3.7 8.23-8.24 8.23z" />

@@ -214,7 +214,7 @@ export default async function NoticiaPage({
 
             {/* Chip + título + meta */}
             <div className="mx-auto mt-10 max-w-3xl">
-              <span className="inline-block rounded-full bg-marconi px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-gold">
+              <span className="inline-block rounded-full bg-marconi-light px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-conplan shadow-gold">
                 {categoryLabels[news.category]}
               </span>
 
@@ -281,7 +281,7 @@ export default async function NoticiaPage({
               {/* ——— Assuntos (tags) ——— cada uma leva à busca por aquele tema. */}
               {news.tags.length > 0 && (
                 <div className="mt-10 flex flex-wrap items-center gap-2 border-t border-slate-200 pt-6">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
                     Assuntos
                   </span>
                   {news.tags.map((t) => (

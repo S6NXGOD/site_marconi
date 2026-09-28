@@ -88,15 +88,21 @@ export default function NewsPortal({
         <div className="section-shell">
           {/* Cabeçalho + filtros */}
           <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
-            <div>
-              <span className="kicker text-marconi-light">
-                <span className="h-px w-6 bg-marconi-light/50" />
-                Portal do Grupo
+            {/* O H1 leva o nome do Grupo: é a frase que o Google e as IAs usam
+                para entender do que é a página. Só "Últimas Notícias" não dizia
+                de quem. Visualmente, nada muda — o nome fica no sobretítulo. */}
+            <h1>
+              {/* Espaçamento entre letras menor no celular: com o do kicker
+                  padrão, "NUNES" caía sozinho na segunda linha. */}
+              <span className="kicker tracking-[0.12em] text-marconi-light sm:tracking-[0.2em]">
+                <span className="h-px w-6 bg-marconi-light/50" aria-hidden />
+                Portal do Grupo Dr. Marconi Nunes
               </span>
-              <h1 className="mt-3 font-serif text-3xl font-semibold text-white sm:text-4xl">
+              <span className="sr-only"> — </span>
+              <span className="mt-3 block font-serif text-3xl font-semibold text-white sm:text-4xl">
                 Últimas Notícias
-              </h1>
-            </div>
+              </span>
+            </h1>
 
             {/* filtros — roláveis no mobile */}
             {!semNoticias && (
@@ -109,7 +115,7 @@ export default function NewsPortal({
                       onClick={() => setFilter(f.value)}
                       className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-semibold transition-all sm:text-sm ${
                         filter === f.value
-                          ? "bg-marconi text-white shadow-gold"
+                          ? "bg-marconi-light text-conplan shadow-gold"
                           : "text-slate-300 hover:text-white"
                       }`}
                     >
@@ -143,7 +149,7 @@ export default function NewsPortal({
               {semNoticias && (
                 <a
                   href="#areas-de-atuacao"
-                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-marconi px-5 py-2.5 text-sm font-semibold text-white shadow-gold transition-all hover:-translate-y-0.5 hover:bg-marconi-light"
+                  className="mt-6 inline-flex items-center gap-2 rounded-full bg-marconi-light px-5 py-2.5 text-sm font-semibold text-conplan shadow-gold transition-all hover:-translate-y-0.5 hover:bg-white"
                 >
                   Ver áreas de atuação
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">

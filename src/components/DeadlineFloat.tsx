@@ -17,7 +17,8 @@ import ExpandableText from "./ExpandableText";
 import ShareAlertButton from "./ShareAlertButton";
 
 // Marca que a pessoa fechou o aviso NESTA sessão do navegador. Assim ele abre
-// sozinho ao entrar no site, mas não volta a abrir se ela fechar e navegar.
+// sozinho ao entrar no site (no computador), mas não volta a abrir se ela
+// fechar e navegar.
 const SESSION_KEY = "mn:prazos-fechado";
 
 
@@ -29,7 +30,8 @@ const toneChip = {
 
 /**
  * Aviso flutuante dos prazos que vencem em até 7 dias.
- * - Abre sozinho ao entrar no site (uma vez por sessão do navegador).
+ * - No computador, abre sozinho ao entrar no site (uma vez por sessão do
+ *   navegador). No celular, fica na pílula — ver o efeito abaixo.
  * - Quando há prazo HOJE ou AMANHÃ, o sino balança para alertar.
  * - Fechável: recolhe para uma pílula, não some de vez.
  * - Canto inferior ESQUERDO (o WhatsApp fica no direito).
@@ -53,6 +55,13 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
 
   useEffect(() => {
     if (urgent.length === 0) return;
+
+    // No celular NÃO abre sozinho: o cartão cobre mais da metade da tela bem
+    // em cima das manchetes, e o Google trata aviso que tampa o conteúdo no
+    // celular como "intersticial intrusivo" (pesa contra no ranking). Lá fica a
+    // pílula — com o sino e o ponto vermelho, já chama a atenção sem esconder
+    // nada.
+    if (window.matchMedia("(max-width: 639px)").matches) return;
 
     let fechado = false;
     try {
@@ -89,8 +98,13 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
   }
 
   return (
+    /* Âncora de tamanho zero no canto: pílula e cartão ficam presos a ela pelo
+       canto de baixo (absolute bottom-0 left-0). Antes o contêiner crescia de
+       pílula para cartão quando o aviso abria sozinho — o topo dele "pulava"
+       e o Google media como layout instável (CLS 0,23 na home). Assim, abrir
+       e fechar não desloca nada. */
     <div
-      className={`fixed bottom-4 left-4 z-40 sm:bottom-6 sm:left-6 ${
+      className={`fixed bottom-4 left-4 z-40 h-0 w-0 sm:bottom-6 sm:left-6 ${
         mobile && whatsappAberto ? "hidden" : ""
       }`}
     >
@@ -103,7 +117,7 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
             exit={{ opacity: 0, y: 12, scale: 0.97 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
             aria-label="Prazos desta semana"
-            className={`w-[calc(100vw-2rem)] max-w-[21.5rem] overflow-hidden rounded-2xl border bg-white shadow-2xl ${
+            className={`absolute bottom-0 left-0 w-[calc(100vw-2rem)] max-w-[21.5rem] origin-bottom-left overflow-hidden rounded-2xl border bg-white shadow-2xl ${
               alertaMaximo ? "border-red-200 ring-1 ring-red-100" : "border-slate-200"
             }`}
           >
@@ -146,7 +160,7 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
                 <h2 className="text-[13px] font-semibold leading-tight text-conplan">
                   Prazos desta semana
                 </h2>
-                <p className={`text-[11px] ${alertaMaximo ? "font-medium text-red-600" : "text-slate-400"}`}>
+                <p className={`text-[11px] ${alertaMaximo ? "font-medium text-red-600" : "text-slate-500"}`}>
                   {alertaMaximo
                     ? "Há prazo vencendo em breve"
                     : `${total} ${total === 1 ? "prazo" : "prazos"} a vencer`}
@@ -178,7 +192,7 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
                       >
                         {text}
                       </span>
-                      <time className="text-[10px] font-medium uppercase tracking-wide text-slate-400">
+                      <time className="text-[10px] font-medium uppercase tracking-wide text-slate-500">
                         {formatarDiaPrazo(group.date)}
                       </time>
                       {group.items.length > 1 && (
@@ -250,6 +264,9 @@ export default function DeadlineFloat({ alerts }: { alerts: AlertItem[] }) {
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.9 }}
             transition={{ duration: 0.18 }}
+            // w-max: presa a uma âncora de largura zero, a pílula quebraria o
+            // texto em uma palavra por linha.
+            className="absolute bottom-0 left-0 w-max origin-bottom-left"
           >
             <button
               type="button"

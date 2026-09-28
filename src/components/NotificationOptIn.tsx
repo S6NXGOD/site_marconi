@@ -107,7 +107,7 @@ export default function NotificationOptIn({ dark = false }: { dark?: boolean }) 
     return (
       <span
         title="As notificações estão bloqueadas nas configurações do navegador."
-        className={`${base} ${dark ? "text-slate-400" : "text-slate-400"}`}
+        className={`${base} ${dark ? "text-slate-400" : "text-slate-500"}`}
       >
         <SinoOff />
         Notificações bloqueadas

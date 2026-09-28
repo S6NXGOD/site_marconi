@@ -74,7 +74,7 @@ export default function NewsSearch({ defaultValue = "", cat }: Props) {
           )}
           <button
             type="submit"
-            className="rounded-full bg-marconi px-4 py-2 text-xs font-semibold text-white shadow-gold transition-colors hover:bg-marconi-light sm:text-sm"
+            className="rounded-full bg-marconi-light px-4 py-2 text-xs font-semibold text-conplan shadow-gold transition-colors hover:bg-white sm:text-sm"
           >
             Buscar
           </button>

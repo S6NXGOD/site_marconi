@@ -163,15 +163,15 @@ export default function AlertsPanel({
                       <motion.span
                         layoutId="aba-alertas"
                         transition={{ type: "spring", stiffness: 380, damping: 32 }}
-                        className="absolute inset-0 rounded-full bg-marconi shadow-gold"
+                        className="absolute inset-0 rounded-full bg-marconi-light shadow-gold"
                       />
                     )}
-                    <span className={`relative z-10 ${ativa ? "text-white" : "text-slate-400 hover:text-white"}`}>
+                    <span className={`relative z-10 ${ativa ? "text-conplan" : "text-slate-400 hover:text-white"}`}>
                       {t.label}
                     </span>
                     <span
                       className={`relative z-10 rounded-full px-1.5 py-0.5 text-[10px] font-bold tabular-nums ${
-                        ativa ? "bg-white/25 text-white" : "bg-white/10 text-slate-400"
+                        ativa ? "bg-conplan/15 text-conplan" : "bg-white/10 text-slate-400"
                       }`}
                     >
                       {t.total}
@@ -206,7 +206,7 @@ export default function AlertsPanel({
                   ? "Nenhum prazo encerrado"
                   : "Nenhum prazo ativo no momento"}
             </p>
-            <p className="mt-1 text-xs text-slate-400">
+            <p className="mt-1 text-xs text-slate-500">
               {busca ? (
                 <>
                   Nada para <strong className="font-semibold text-slate-500">“{busca}”</strong> em{" "}
@@ -261,7 +261,7 @@ export default function AlertsPanel({
                           )}
                           {text}
                         </span>
-                        <time className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                        <time className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                           {formatarDiaPrazo(group.date)}
                         </time>
                         {group.items.length > 1 && (
@@ -312,7 +312,7 @@ export default function AlertsPanel({
         )}
 
         {aba === "encerrados" && groups.length > 0 && !busca && (
-          <p className="border-t border-slate-100 bg-cloud px-5 py-2.5 text-center text-[11px] text-slate-400 sm:px-6">
+          <p className="border-t border-slate-100 bg-cloud px-5 py-2.5 text-center text-[11px] text-slate-500 sm:px-6">
             Prazos já vencidos, para consulta.
           </p>
         )}

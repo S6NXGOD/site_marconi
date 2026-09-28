@@ -78,7 +78,7 @@ export default function ShareButton({ title, summary, url }: Props) {
         type="button"
         onClick={onWhatsApp}
         aria-label="Compartilhar no WhatsApp"
-        className={`${botaoClass} bg-[#25D366]/90 ring-white/20 hover:bg-[#25D366]`}
+        className={`${botaoClass} bg-[#14863E] ring-white/20 hover:bg-[#0F7234]`}
       >
         <WhatsAppIcon />
         <span className="hidden sm:inline">WhatsApp</span>

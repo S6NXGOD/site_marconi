@@ -56,7 +56,7 @@ export default function ShareAlertButton({ alert, compacto = false }: Props) {
       onClick={compartilhar}
       title="Compartilhar no WhatsApp"
       aria-label={`Compartilhar "${alert.title}" no WhatsApp`}
-      className={`flex ${tamanho} shrink-0 items-center justify-center rounded-full text-[#25D366] transition-colors hover:bg-[#25D366]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40`}
+      className={`flex ${tamanho} shrink-0 items-center justify-center rounded-full text-[#128C7E] transition-colors hover:bg-[#25D366]/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]/40`}
     >
       <svg
         width={compacto ? "13" : "15"}
