@@ -19,7 +19,10 @@ import { prisma } from "@/lib/prisma";
 import { resumoExibicao } from "@/lib/resumo";
 import { inicioDeHoje } from "@/lib/datas";
 import { toEmbedUrl } from "@/lib/embed";
-import { getWhatsappContacts, getBusinessAreas } from "@/lib/content";
+import { getWhatsappContacts, getBusinessAreas, getPerguntas } from "@/lib/content";
+import PerguntasFrequentes from "@/components/PerguntasFrequentes";
+import { JsonLd } from "@/components/JsonLd";
+import { perguntasSchema } from "@/lib/schema";
 
 // Renderiza a cada requisição — conteúdo do portal é dinâmico.
 export const dynamic = "force-dynamic";
@@ -197,11 +200,13 @@ async function getPortalData(): Promise<{
 }
 
 export default async function Home() {
-  const [{ news, ultimas, alerts, encerrados, approvals }, whatsapp, areas] = await Promise.all([
-    getPortalData(),
-    getWhatsappContacts(),
-    getBusinessAreas(),
-  ]);
+  const [{ news, ultimas, alerts, encerrados, approvals }, whatsapp, areas, perguntas] =
+    await Promise.all([
+      getPortalData(),
+      getWhatsappContacts(),
+      getBusinessAreas(),
+      getPerguntas(),
+    ]);
 
   return (
     <>
@@ -222,6 +227,10 @@ export default async function Home() {
         {/* Reels de Contas Aprovadas — some sozinho se não houver nenhum */}
         <ApprovalsShowcase items={approvals} />
 
+        {/* Dúvidas comuns — logo antes do contato: quem não achou a resposta
+            já cai no formulário. Some se não houver pergunta ativa. */}
+        <PerguntasFrequentes perguntas={perguntas} temWhatsapp={whatsapp.length > 0} />
+
         {/* Captação de leads (grava em CommercialLead) */}
         <ContactForm whatsapp={whatsapp[0]?.phone} />
       </main>
@@ -231,6 +240,9 @@ export default async function Home() {
       <WhatsAppFloat contacts={whatsapp} />
 
       <Footer />
+
+      {/* Perguntas e respostas estruturadas — o que as IAs de busca leem. */}
+      {perguntas.length > 0 && <JsonLd data={perguntasSchema(perguntas)} />}
     </>
   );
 }

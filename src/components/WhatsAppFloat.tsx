@@ -5,7 +5,12 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 
 import { Icon } from "@/lib/icons";
-import { marcarFloat, useOutroFloatAberto, useEhMobile } from "@/lib/floats";
+import {
+  EVENTO_ABRIR_WHATSAPP,
+  marcarFloat,
+  useOutroFloatAberto,
+  useEhMobile,
+} from "@/lib/floats";
 
 export type WhatsappItem = {
   id: string;
@@ -47,12 +52,19 @@ export default function WhatsAppFloat({
     return () => marcarFloat("whatsapp", false);
   }, [open]);
 
-  // NÃO abre sozinho: o atendimento só aparece se a pessoa tocar na bolinha.
-  // Um chat que pula na cara ao entrar no site atrapalha a leitura — e no
-  // celular ainda disputava o rodapé com o aviso de prazos.
+  // NÃO abre sozinho: o atendimento só aparece se a pessoa tocar na bolinha
+  // — ou num botão da página que peça isso (abrirWhatsApp). Um chat que pula
+  // na cara ao entrar no site atrapalha a leitura — e no celular ainda
+  // disputava o rodapé com o aviso de prazos.
   function fechar() {
     setOpen(false);
   }
+
+  useEffect(() => {
+    const abrir = () => setOpen(true);
+    window.addEventListener(EVENTO_ABRIR_WHATSAPP, abrir);
+    return () => window.removeEventListener(EVENTO_ABRIR_WHATSAPP, abrir);
+  }, []);
 
   // Fecha com Esc e ao clicar fora.
   useEffect(() => {
@@ -170,7 +182,7 @@ export default function WhatsAppFloat({
                         <span className="block text-sm font-semibold leading-tight text-slate-800">
                           {o.title}
                         </span>
-                        <span className="mt-0.5 block text-xs leading-tight text-slate-400">
+                        <span className="mt-0.5 block text-xs leading-tight text-slate-500">
                           {o.subtitle}
                         </span>
                       </span>

@@ -18,6 +18,7 @@
 - [Alertas & Prazos](https://marconinunes.com.br/#alertas): calendário de obrigações fiscais e contábeis (setor público e privado).
 - [Áreas de Atuação](https://marconinunes.com.br/#areas-de-atuacao): detalhamento dos serviços das duas frentes.
 - [Contas Aprovadas](https://marconinunes.com.br/#prova-social): municípios com contas aprovadas pelo Tribunal de Contas do Estado do Piauí (TCE-PI).
+- [Perguntas frequentes](https://marconinunes.com.br/#perguntas-frequentes): o que é o Grupo, diferença entre CONPLAN e Marconi Nunes, serviços, contato, prazos e avisos.
 - [Fale Conosco](https://marconinunes.com.br/#contato)
 
 ## Legal

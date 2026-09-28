@@ -57,3 +57,15 @@ export function useEhMobile(): boolean {
   }, []);
   return mobile;
 }
+
+/**
+ * Abre o atendimento do WhatsApp de qualquer ponto da página — o "Não achou
+ * sua resposta?" das Perguntas frequentes, por exemplo. Abre a lista de
+ * contatos em vez de um número fixo: a pessoa escolhe entre cliente e
+ * comercial, como na bolinha.
+ */
+export const EVENTO_ABRIR_WHATSAPP = "abrir-whatsapp";
+
+export function abrirWhatsApp() {
+  window.dispatchEvent(new Event(EVENTO_ABRIR_WHATSAPP));
+}

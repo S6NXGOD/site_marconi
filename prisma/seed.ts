@@ -107,6 +107,79 @@ async function conteudoPadrao() {
   await prisma.systemFlag.create({ data: { key: FLAG_CONTEUDO } });
 }
 
+const FLAG_PERGUNTAS = "bootstrap:perguntas-frequentes";
+
+/**
+ * Primeira leva de Perguntas frequentes.
+ *
+ * Nada aqui é inventado: cada resposta repete o que o site já afirma (áreas
+ * de atuação, CNPJs, contatos, como funcionam notícias, prazos e avisos).
+ * Serve de ponto de partida — o texto é da equipe, e muda no painel
+ * (/admin/perguntas). Mesma trava de marcador do conteúdo acima: roda uma vez;
+ * se a equipe apagar tudo, não volta.
+ */
+async function perguntasPadrao() {
+  const jaRodou = await prisma.systemFlag.findUnique({ where: { key: FLAG_PERGUNTAS } });
+  if (jaRodou) return;
+
+  if ((await prisma.faqItem.count()) === 0) {
+    const perguntas: { question: string; answer: string }[] = [
+      {
+        question: "O que é o Grupo Dr. Marconi Nunes?",
+        answer:
+          "É o grupo que reúne duas empresas de contabilidade do Piauí, com a mesma exigência de segurança e conformidade: a Marconi Nunes Contabilidade (CNPJ 21.066.608/0001-99), que atende empresas do setor privado, e a CONPLAN Contabilidade LTDA (CNPJ 10.682.231/0001-86), que presta assessoria à gestão pública.",
+      },
+      {
+        question: "Qual a diferença entre a CONPLAN e a Marconi Nunes Contabilidade?",
+        answer:
+          "A CONPLAN atende prefeituras, câmaras e órgãos municipais: gestão de convênios, prestação de contas de governo e assessoria técnica, com foco na conformidade junto ao Tribunal de Contas do Estado do Piauí (TCE-PI).\n\nA Marconi Nunes Contabilidade atende empresas: área fiscal e tributária, contábil, RH e departamento pessoal, e societária e legalização.",
+      },
+      {
+        question: "Que serviços vocês oferecem para empresas?",
+        answer:
+          "Na área fiscal e tributária, apuração de tributos, obrigações acessórias e planejamento tributário. Na contábil, escrituração e demonstrações contábeis. Em RH e departamento pessoal, folha de pagamento, admissões, rescisões e obrigações trabalhistas. Na societária, abertura, alteração e regularização de empresas.",
+      },
+      {
+        question: "Vocês atendem prefeituras e câmaras municipais?",
+        answer:
+          "Sim, pela CONPLAN: gestão de convênios, prestação de contas de governo e assessoria técnica a prefeituras e câmaras. Os municípios que tiveram as contas aprovadas pelo TCE-PI com o nosso acompanhamento aparecem na seção Contas Aprovadas.",
+      },
+      {
+        question: "Como falo com um especialista?",
+        answer:
+          "Pelo botão do WhatsApp no canto da tela, pelo formulário Fale Conosco no fim desta página ou pelo e-mail contato@marconinunes.com.br.",
+      },
+      {
+        question: "Os prazos do calendário de obrigações são oficiais?",
+        answer:
+          "São lembretes informativos, montados a partir das fontes oficiais. As datas podem mudar por decisão dos órgãos — antes de cumprir uma obrigação, confirme na fonte oficial ou com a nossa equipe.",
+      },
+      {
+        question: "Como recebo os avisos de notícias e prazos?",
+        answer:
+          "Ative as notificações no botão da seção Alertas & Prazos: o aviso chega no celular ou no computador quando sai notícia nova ou quando um prazo se aproxima. Dá para desativar quando quiser.",
+      },
+      {
+        question: "De onde vêm as notícias do portal?",
+        answer:
+          "Parte é escrita pela nossa equipe e parte é selecionada de órgãos oficiais e de veículos especializados em contabilidade e gestão pública — sempre com o crédito e o link para a matéria original.",
+      },
+      {
+        question: "O portal é gratuito?",
+        answer:
+          "Sim. Notícias, calendário de prazos e avisos são abertos a qualquer pessoa, sem cadastro.",
+      },
+    ];
+
+    await prisma.faqItem.createMany({
+      data: perguntas.map((p, i) => ({ ...p, order: i })),
+    });
+    console.log(`[bootstrap] ${perguntas.length} perguntas frequentes criadas (edite em /admin/perguntas).`);
+  }
+
+  await prisma.systemFlag.create({ data: { key: FLAG_PERGUNTAS } });
+}
+
 /**
  * Bootstrap do administrador.
  *
@@ -123,6 +196,7 @@ async function conteudoPadrao() {
 async function main() {
   // Conteúdo institucional editável — independente do admin existir ou não.
   await conteudoPadrao();
+  await perguntasPadrao();
 
   // Antes do bloco do admin de propósito: ele retorna cedo quando já existe
   // usuário, que é justamente o caso de produção.

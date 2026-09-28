@@ -26,6 +26,22 @@ export async function getWhatsappContacts(): Promise<WhatsappItem[]> {
   }
 }
 
+export type PerguntaItem = { id: string; question: string; answer: string };
+
+/** Perguntas frequentes ativas, na ordem definida no painel. */
+export async function getPerguntas(): Promise<PerguntaItem[]> {
+  try {
+    return await prisma.faqItem.findMany({
+      where: { isActive: true },
+      orderBy: [{ order: "asc" }, { createdAt: "asc" }],
+      select: { id: true, question: true, answer: true },
+    });
+  } catch (error) {
+    console.error("[content] falha ao carregar perguntas frequentes:", error);
+    return [];
+  }
+}
+
 export async function getBusinessAreas(): Promise<AreaItem[]> {
   try {
     return await prisma.businessArea.findMany({

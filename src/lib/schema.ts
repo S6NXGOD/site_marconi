@@ -141,3 +141,23 @@ export function noticiaSchema(noticia: {
     publisher: { "@id": `${SITE_URL}/#organizacao` },
   };
 }
+
+/**
+ * Perguntas frequentes (FAQPage).
+ *
+ * Desde 2023 o Google só mostra o "sanfona" de FAQ no resultado para sites de
+ * governo e saúde — então isto não rende destaque visual na busca. Rende em
+ * outro lugar: as IAs de busca (Google, ChatGPT, Perplexity) leem perguntas e
+ * respostas estruturadas e as usam para responder sobre o Grupo.
+ */
+export function perguntasSchema(perguntas: Array<{ question: string; answer: string }>) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: perguntas.map((p) => ({
+      "@type": "Question",
+      name: p.question,
+      acceptedAnswer: { "@type": "Answer", text: p.answer },
+    })),
+  };
+}

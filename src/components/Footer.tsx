@@ -32,6 +32,7 @@ const columns: {
       { label: "Áreas de Atuação", href: "/#areas-de-atuacao" },
       { label: "Números do Grupo", href: "/#resultados" },
       { label: "O Grupo", href: "/#sobre" },
+      { label: "Perguntas frequentes", href: "/#perguntas-frequentes" },
       { label: "Fale Conosco", href: "/#contato" },
       { label: "Área Restrita", href: "/login" },
     ],
@@ -70,7 +71,7 @@ export default function Footer() {
 
             <a
               href="/#contato"
-              className="mt-6 inline-flex items-center gap-2 rounded-full bg-marconi px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-marconi-light"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-marconi-light px-5 py-2.5 text-sm font-semibold text-conplan transition-colors hover:bg-white"
             >
               Fale Conosco
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -113,9 +114,11 @@ export default function Footer() {
 
           {columns.map((col) => (
             <div key={col.heading}>
-              <h4 className="text-sm font-semibold uppercase tracking-wider text-white">
+              {/* h2 (e não h4): logo depois do último h2 da página, pular níveis
+                  quebra a leitura por títulos dos leitores de tela. */}
+              <h2 className="text-sm font-semibold uppercase tracking-wider text-white">
                 {col.heading}
-              </h4>
+              </h2>
               <ul className="mt-4 space-y-3 text-sm">
                 {col.links.map((link) => (
                   <li key={link.label}>
@@ -143,13 +146,13 @@ export default function Footer() {
           ))}
         </div>
 
-        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-slate-500 sm:flex-row sm:items-start sm:justify-between">
+        <div className="mt-12 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-slate-400 sm:flex-row sm:items-start sm:justify-between">
           <div className="space-y-1">
             <p>
               © {new Date().getFullYear()} Grupo Dr. Marconi Nunes · Todos os
               direitos reservados.
             </p>
-            <p className="text-slate-600">
+            <p>
               Marconi Nunes Contabilidade — CNPJ 21.066.608/0001-99
               <span className="mx-1.5" aria-hidden>·</span>
               CONPLAN Contabilidade LTDA — CNPJ 10.682.231/0001-86
@@ -168,7 +171,7 @@ export default function Footer() {
 
         {/* Crédito do desenvolvedor */}
         <div className="mt-6 border-t border-white/5 pt-6 text-center">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             Site e sistema desenvolvidos por{" "}
             <a
               href="https://www.instagram.com/fluviodev"
@@ -181,7 +184,7 @@ export default function Footer() {
             <span className="mx-1.5 text-slate-600" aria-hidden>
               ·
             </span>
-            <span className="text-slate-500">
+            <span>
               Especialista em sites e sistemas para empresas de alto padrão
             </span>
           </p>
