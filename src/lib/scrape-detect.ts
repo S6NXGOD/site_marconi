@@ -47,7 +47,12 @@ function classesEstaveis(el: cheerio.Cheerio<any>): string[] {
     .filter((c) => c && !ehClasseInstavel(c));
 }
 
-const RE_DATA = /\d{1,2}\/\d{1,2}\/\d{4}|\d{1,2}\s+de\s+[a-zà-ú]+/i;
+/**
+ * Datas absolutas nos formatos que o parseDataRaspada entende: 15/07/2026,
+ * 27.09.2026 (o do TRE-PI), 2026-07-15 e "15 de julho". Aceitar menos que o
+ * parser deixava o campo vazio — e a matéria entrava com a data de hoje.
+ */
+const RE_DATA = /\d{1,2}[/.]\d{1,2}[/.]\d{4}|\d{4}-\d{2}-\d{2}|\d{1,2}\s+de\s+[a-zà-ú]+/i;
 /** Datas relativas: "hoje", "ontem", "há 3 horas", "há 2 dias"… */
 const RE_DATA_REL = /\b(hoje|ontem|anteontem|h[aá]\s+\d+\s*(hora|dia|min|semana|m[eê]s))/i;
 
@@ -240,9 +245,23 @@ export function detectarListagem(
 export function detectarConteudo(html: string): string {
   const $ = cheerio.load(html);
 
+  // Parágrafos do bloco: os <p> filhos e os embrulhados um a um numa <div>
+  // própria. Texto colado do Word (comum no TRE-PI) vem assim —
+  // div.OutlineElement > p, uma div por parágrafo — e, contando só os filhos
+  // diretos, nenhum bloco tinha dois <p>: a detecção voltava vazia.
+  const paragrafos = (el: any) =>
+    $(el)
+      .children("p")
+      .add(
+        $(el)
+          .children("div")
+          .filter((_, d) => $(d).children().length === 1)
+          .children("p")
+      );
+
   let melhor: { el: any; chars: number } | null = null;
   $("div,article,section,main").each((_, el) => {
-    const ps = $(el).children("p");
+    const ps = paragrafos(el);
     if (ps.length < 2) return;
     const chars = ps.text().trim().length;
     if (chars < 200) return;
@@ -252,6 +271,20 @@ export function detectarConteudo(html: string): string {
   if (!melhor) return "";
 
   let $el = $((melhor as { el: any }).el);
+
+  // Bloco sem id que é FILHO ÚNICO: o pai tem exatamente o mesmo conteúdo e,
+  // com um id estável, um nome melhor. No TRE-PI o texto colado do Word vem
+  // numa div.OutlineElement.Ltr.BCX0 — classe gerada pelo Word, que muda de
+  // matéria para matéria — filha única do #ancora-1, que é fixo.
+  let $unico = $el;
+  for (let i = 0; i < 3 && !$unico.attr("id"); i++) {
+    const pai = $unico.parent();
+    if (pai.length === 0 || pai.is("body,html") || pai.children().length !== 1) break;
+    const id = pai.attr("id");
+    if (id && !ehClasseInstavel(id)) return `#${id}`;
+    $unico = pai;
+  }
+
   // Sobe até um elemento com id ou classe utilizável.
   for (let i = 0; i < 4 && $el.length; i++) {
     const id = $el.attr("id");

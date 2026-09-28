@@ -6,8 +6,8 @@ import { detectarListagem, detectarConteudo } from "@/lib/scrape-detect";
 import { buscarItens } from "@/lib/scraper";
 
 export const runtime = "nodejs";
-// Busca a listagem e ainda uma matéria (para o seletor de corpo). Duas
-// requisições externas passam do limite padrão.
+// Busca a listagem e ainda algumas matérias (para o seletor de corpo, em
+// paralelo). Várias requisições externas passam do limite padrão.
 export const maxDuration = 60;
 
 /**
@@ -60,12 +60,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // Roda os seletores achados para devolver uma amostra e o link da 1ª matéria.
+  // Roda os seletores achados para devolver uma amostra e os links das matérias.
   let amostra: { title: string; date: string; imageUrl: string }[] = [];
-  let primeiroLink = "";
+  let links: string[] = [];
   try {
     const itens = await buscarItens({ url, ...seletores });
-    primeiroLink = itens[0]?.link ?? "";
+    links = itens.slice(0, MATERIAS_AMOSTRADAS).map((i) => i.link);
     amostra = itens.slice(0, 3).map((i) => ({
       title: i.title,
       date: i.date,
@@ -75,15 +75,7 @@ export async function POST(request: Request) {
     // A amostra é um extra; a detecção principal já valeu.
   }
 
-  // Seletor do corpo: abre a primeira matéria e acha o maior bloco de texto.
-  let contentSelector = "";
-  if (primeiroLink) {
-    try {
-      contentSelector = detectarConteudo(await buscarHtml(primeiroLink));
-    } catch {
-      // Sem o corpo, o rascunho nasce só com o resumo — a fonte ainda serve.
-    }
-  }
+  const contentSelector = await detectarCorpo(links);
 
   return NextResponse.json({
     ...seletores,
@@ -91,6 +83,43 @@ export async function POST(request: Request) {
     nomeSugerido: nomeDaFonte(html, url),
     amostra,
   });
+}
+
+/** Quantas matérias abrir para decidir o seletor do corpo. */
+const MATERIAS_AMOSTRADAS = 3;
+
+/**
+ * Seletor do corpo: abre algumas matérias e fica com o seletor que mais se
+ * repete entre elas.
+ *
+ * Uma matéria só não basta: a primeira da lista pode ser atípica — no TRE-PI
+ * era um texto colado do Word, e o campo voltava vazio. As páginas são
+ * buscadas em paralelo para caber no tempo da rota.
+ */
+async function detectarCorpo(links: string[]): Promise<string> {
+  const resultados = await Promise.allSettled(
+    links.map(async (link) => detectarConteudo(await buscarHtml(link)))
+  );
+
+  const votos = new Map<string, number>();
+  for (const r of resultados) {
+    // Página que não abriu ou sem corpo reconhecível não vota.
+    if (r.status === "fulfilled" && r.value) {
+      votos.set(r.value, (votos.get(r.value) ?? 0) + 1);
+    }
+  }
+
+  // Empate fica com o da primeira matéria da lista (a Map guarda a ordem).
+  let vencedor = "";
+  let maior = 0;
+  votos.forEach((n, seletor) => {
+    if (n > maior) {
+      vencedor = seletor;
+      maior = n;
+    }
+  });
+  // Sem o corpo, o rascunho nasce só com o resumo — a fonte ainda serve.
+  return vencedor;
 }
 
 /** Nome-palpite para a fonte, a partir do site. A pessoa ajusta depois. */
