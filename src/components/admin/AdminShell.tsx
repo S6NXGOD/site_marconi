@@ -15,6 +15,12 @@ const links = [
     icon: <path d="M3 13h8V3H3v10zM13 21h8V11h-8v10zM13 3v6h8V3h-8zM3 21h8v-6H3v6z" />,
   },
   {
+    href: "/admin/audiencia",
+    label: "Audiência",
+    exact: false,
+    icon: <path d="M4 20h16M7 16v-4M12 16V8M17 16V5" />,
+  },
+  {
     href: "/admin/noticias",
     label: "Notícias",
     exact: false,

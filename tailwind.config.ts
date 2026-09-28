@@ -62,12 +62,35 @@ const config: Config = {
           "94%": { transform: "rotate(-5deg)" },
           "97%": { transform: "rotate(2deg)" },
         },
+        // ——— Audiência (gráficos do painel) ———
+        // Barra que cresce a partir da base (horizontal e vertical).
+        "crescer-x": {
+          "0%": { transform: "scaleX(0)" },
+          "100%": { transform: "scaleX(1)" },
+        },
+        "crescer-y": {
+          "0%": { transform: "scaleY(0)" },
+          "100%": { transform: "scaleY(1)" },
+        },
+        // Linha do gráfico "desenhada" da esquerda para a direita (usa pathLength=1).
+        desenhar: {
+          "0%": { strokeDashoffset: "1" },
+          "100%": { strokeDashoffset: "0" },
+        },
+        aparecer: {
+          "0%": { opacity: "0" },
+          "100%": { opacity: "1" },
+        },
       },
       animation: {
         "fade-up": "fade-up 0.6s ease-out both",
         "soft-ping": "soft-ping 2.6s cubic-bezier(0, 0, 0.2, 1) infinite",
         breathe: "breathe 3.2s ease-in-out infinite",
         sino: "sino 2.8s ease-in-out infinite",
+        "crescer-x": "crescer-x 0.9s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "crescer-y": "crescer-y 0.8s cubic-bezier(0.22, 1, 0.36, 1) both",
+        desenhar: "desenhar 1.2s cubic-bezier(0.22, 1, 0.36, 1) both",
+        aparecer: "aparecer 0.8s ease-out 0.35s both",
       },
     },
   },

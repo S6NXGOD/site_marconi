@@ -2,8 +2,9 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
 import { resumoExibicao, resumoProprioServe } from "@/lib/resumo";
-import { mensagemDaNoticia } from "@/lib/share";
+import { comVia, mensagemDaNoticia } from "@/lib/share";
 import { SITE_URL } from "@/lib/site";
+import { pct, totaisPorNoticia } from "@/lib/audiencia";
 import DeleteNewsButton from "@/components/admin/DeleteNewsButton";
 import PublishToggleButton from "@/components/admin/PublishToggleButton";
 import ShareNewsButton from "@/components/admin/ShareNewsButton";
@@ -55,8 +56,12 @@ export default async function NoticiasAdminPage({
     mensagemDaNoticia({
       title: n.title,
       summary: resumoExibicao(n.excerpt, corpoDe.get(n.id) ?? "", 220),
-      url: `${SITE_URL}/noticias/${n.slug}`,
+      // ?via=whatsapp: quem chegar pelo link aparece como WhatsApp na Audiência.
+      url: comVia(`${SITE_URL}/noticias/${n.slug}`, "whatsapp"),
     });
+
+  // Audiência de sempre de cada publicada, numa consulta só.
+  const audiencia = await totaisPorNoticia(news.filter((n) => n.isPublished).map((n) => n.id));
 
   const okMessage = searchParams.ok ? okMessages[searchParams.ok] : undefined;
 
@@ -122,6 +127,7 @@ export default async function NoticiasAdminPage({
                     <span className="text-xs text-slate-400">
                       {dateFmt.format(n.publishedAt)}
                     </span>
+                    {n.isPublished && <ResumoAudiencia id={n.id} dados={audiencia.get(n.id)} />}
                   </div>
                 </div>
 
@@ -149,5 +155,37 @@ export default async function NoticiasAdminPage({
         </ul>
       )}
     </div>
+  );
+}
+
+/**
+ * "123 acessos · 45% leram" — a audiência de sempre da matéria, discreta na
+ * linha da data. Leva à página de audiência dela.
+ */
+function ResumoAudiencia({
+  id,
+  dados,
+}: {
+  id: string;
+  dados?: { acessos: number; leituras: number };
+}) {
+  return (
+    <Link
+      href={`/admin/audiencia/${id}`}
+      title="Ver a audiência desta matéria"
+      className="inline-flex items-center gap-1 rounded-md text-xs text-slate-500 transition-colors hover:text-conplan"
+    >
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+        <path d="M4 20h16M7 16v-4M12 16V8M17 16V5" />
+      </svg>
+      {dados ? (
+        <>
+          <span className="font-semibold text-slate-600">{dados.acessos.toLocaleString("pt-BR")}</span>
+          {dados.acessos === 1 ? "acesso" : "acessos"} · {pct(dados.leituras, dados.acessos)}% leram
+        </>
+      ) : (
+        "sem acessos ainda"
+      )}
+    </Link>
   );
 }

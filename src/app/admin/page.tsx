@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import ResumoDashboard from "@/components/admin/audiencia/ResumoDashboard";
 import {
   categoryLabels,
   categoryBadgeClasses,
@@ -110,6 +111,9 @@ export default async function AdminDashboard() {
         </div>
       </header>
 
+      {/* Audiência — o atalho do dia a dia */}
+      <ResumoDashboard />
+
       {/* Stat tiles */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {stats.map((s) => (
@@ -118,8 +122,10 @@ export default async function AdminDashboard() {
             className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
           >
             <p className="text-sm font-medium text-slate-500">{s.label}</p>
-            <p className="mt-2 font-serif text-4xl font-bold text-conplan">
-              {s.value}
+            {/* Número em fonte sem serifa, como os da Audiência logo acima:
+                a serifada fica para os títulos. */}
+            <p className="mt-2 text-[2rem] font-semibold leading-none text-conplan">
+              {s.value.toLocaleString("pt-BR")}
             </p>
           </div>
         ))}
