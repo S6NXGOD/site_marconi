@@ -22,6 +22,7 @@ import { breadcrumbSchema, noticiaSchema } from "@/lib/schema";
 import { formatarData } from "@/lib/datas";
 import { ConteudoNoticia } from "@/lib/conteudo";
 import { resumoExibicao, resumoRepeteCorpo } from "@/lib/resumo";
+import { mensagemDaNoticia } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
 
@@ -209,7 +210,10 @@ export default async function NoticiaPage({
                 <span className="sm:hidden">Voltar</span>
               </Link>
 
-              <ShareButton title={news.title} summary={resumoDe(news)} />
+              <ShareButton
+                title={news.title}
+                mensagem={mensagemDaNoticia({ title: news.title, summary: resumoDe(news), url })}
+              />
             </div>
 
             {/* Chip + título + meta */}

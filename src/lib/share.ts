@@ -140,3 +140,17 @@ export function mensagemDaAprovacao({
 export function linkWhatsApp(mensagem: string): string {
   return `https://wa.me/?text=${encodeURIComponent(mensagem)}`;
 }
+
+/**
+ * Celular ou tablet? Decide o jeito de compartilhar: no celular, o wa.me e o
+ * compartilhar do sistema abrem o WhatsApp direto; no computador, não — o wa.me
+ * passa por uma página intermediária e o compartilhar do Windows não serve —,
+ * então lá abre a janela com as opções (ShareDialog). Só roda no navegador.
+ */
+export function ehCelular(): boolean {
+  return (
+    /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) ||
+    // iPad com iPadOS se apresenta como Mac; o toque denuncia.
+    window.matchMedia("(pointer: coarse)").matches
+  );
+}

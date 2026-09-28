@@ -66,19 +66,27 @@ function cortarNaPalavra(texto: string, max: number): string {
 }
 
 /**
+ * O resumo digitado serve como está? "Bom" = tem conteúdo e não termina em
+ * "…" — o "…" denuncia o corte cru antigo, e nesse caso o corpo dá um resumo
+ * melhor do que reaproveitar o texto já mutilado.
+ */
+export function resumoProprioServe(excerpt: string | null | undefined): boolean {
+  const t = excerpt?.trim();
+  return Boolean(t) && !t!.endsWith("…");
+}
+
+/**
  * Resumo para EXIBIÇÃO (cards, busca, preview do WhatsApp, description).
  *
- * Usa o resumo digitado quando ele é bom; senão, deriva do corpo. "Bom" = tem
- * conteúdo e não termina em "…" — o "…" denuncia o corte cru antigo, e nesse
- * caso o corpo dá um resumo melhor do que reaproveitar o texto já mutilado.
+ * Usa o resumo digitado quando ele serve (resumoProprioServe); senão, deriva
+ * do corpo.
  */
 export function resumoExibicao(
   excerpt: string | null | undefined,
   content: string,
   max = 220
 ): string {
-  const bom = excerpt?.trim() && !excerpt.trim().endsWith("…");
-  return resumoInteligente(bom ? excerpt! : content, max);
+  return resumoInteligente(resumoProprioServe(excerpt) ? excerpt! : content, max);
 }
 
 /**

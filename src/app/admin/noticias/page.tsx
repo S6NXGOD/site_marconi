@@ -1,8 +1,12 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
+import { resumoExibicao, resumoProprioServe } from "@/lib/resumo";
+import { mensagemDaNoticia } from "@/lib/share";
+import { SITE_URL } from "@/lib/site";
 import DeleteNewsButton from "@/components/admin/DeleteNewsButton";
 import PublishToggleButton from "@/components/admin/PublishToggleButton";
+import ShareNewsButton from "@/components/admin/ShareNewsButton";
 
 const dateFmt = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
@@ -25,11 +29,34 @@ export default async function NoticiasAdminPage({
     select: {
       id: true,
       title: true,
+      slug: true,
+      excerpt: true,
       category: true,
       isPublished: true,
       publishedAt: true,
     },
   });
+
+  // Mensagem pronta do botão de compartilhar — só das publicadas, porque o
+  // link de um rascunho dá 404. O corpo só é buscado para quem não tem resumo
+  // próprio que sirva: carregar o texto de todas pesaria na lista à toa.
+  const precisamDoCorpo = news
+    .filter((n) => n.isPublished && !resumoProprioServe(n.excerpt))
+    .map((n) => n.id);
+  const corpos = precisamDoCorpo.length
+    ? await prisma.news.findMany({
+        where: { id: { in: precisamDoCorpo } },
+        select: { id: true, content: true },
+      })
+    : [];
+  const corpoDe = new Map(corpos.map((c) => [c.id, c.content]));
+
+  const mensagemDe = (n: (typeof news)[number]) =>
+    mensagemDaNoticia({
+      title: n.title,
+      summary: resumoExibicao(n.excerpt, corpoDe.get(n.id) ?? "", 220),
+      url: `${SITE_URL}/noticias/${n.slug}`,
+    });
 
   const okMessage = searchParams.ok ? okMessages[searchParams.ok] : undefined;
 
@@ -103,6 +130,7 @@ export default async function NoticiasAdminPage({
                   <PublishToggleButton id={n.id} isPublished={n.isPublished} />
 
                   <div className="flex items-center gap-1">
+                    {n.isPublished && <ShareNewsButton mensagem={mensagemDe(n)} />}
                     <Link
                       href={`/admin/noticias/${n.id}/editar`}
                       className="inline-flex min-h-9 items-center gap-1.5 rounded-lg px-3 text-xs font-semibold text-conplan transition-colors hover:bg-conplan-soft"
