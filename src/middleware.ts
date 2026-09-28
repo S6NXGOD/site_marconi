@@ -3,16 +3,15 @@ import type { NextFetchEvent, NextRequest } from "next/server";
 import { withAuth, type NextRequestWithAuth } from "next-auth/middleware";
 
 /**
- * Middleware de borda — duas responsabilidades, nesta ordem:
+ * Middleware de borda — três responsabilidades, nesta ordem:
  *
  *  1. WEBMAIL DOS COLABORADORES: qualquer requisição ao host
  *     `webmail.marconinunes.com.br` responde 301 (permanente) para o provedor
  *     de e-mail (Hostinger), antes de tocar no roteamento da aplicação.
+ *  1b. WWW: `www.marconinunes.com.br` responde 301 para `marconinunes.com.br`
+ *     — o site público responde num endereço só.
  *  2. PAINEL: /admin/** segue protegido por autenticação (next-auth) — sem
  *     token válido, redireciona para /login.
- *
- * O site público (`marconinunes.com.br` e `www.marconinunes.com.br`) passa
- * direto, sem nenhuma alteração.
  *
  * ⚠️ Para o item 1 valer, o subdomínio `webmail.marconinunes.com.br` precisa
  * APONTAR para esta aplicação (cadastrado como domínio custom no Railway).
@@ -33,6 +32,15 @@ export default function middleware(req: NextRequest, event: NextFetchEvent) {
   // 1) Webmail: 301 permanente para o provedor, sem passar pela aplicação.
   if (host === WEBMAIL_HOST) {
     return NextResponse.redirect(WEBMAIL_DESTINO, 301);
+  }
+
+  // 1b) www → endereço oficial, mantendo caminho e parâmetros. Sem isso o site
+  //     inteiro respondia nos dois endereços: duas cópias para o Google, com o
+  //     peso de cada link dividido entre elas (e a medição de audiência
+  //     separando "www" do resto).
+  if (host.startsWith("www.")) {
+    const { pathname, search } = req.nextUrl;
+    return NextResponse.redirect(`https://${host.slice(4)}${pathname}${search}`, 301);
   }
 
   // 2) Painel: delega para a proteção do next-auth.

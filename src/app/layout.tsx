@@ -77,6 +77,12 @@ export const metadata: Metadata = {
     title: "Grupo Dr. Marconi Nunes | Gestão Pública & Contabilidade",
     description: DESCRICAO,
   },
+  // Google Search Console: o código da meta tag de verificação vai na variável
+  // GOOGLE_SITE_VERIFICATION (Railway). Não carrega script nenhum no site — é
+  // o painel do próprio Google que mostra buscas, cliques e erros de indexação.
+  verification: process.env.GOOGLE_SITE_VERIFICATION
+    ? { google: process.env.GOOGLE_SITE_VERIFICATION }
+    : undefined,
   authors: [{ name: SITE_NAME, url: SITE_URL }],
   creator: SITE_NAME,
   publisher: SITE_NAME,

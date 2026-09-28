@@ -9,8 +9,11 @@ export function JsonLd({ data }: { data: Record<string, unknown> }) {
   return (
     <script
       type="application/ld+json"
-      // O conteúdo é gerado pelo próprio servidor, não vem do usuário.
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+      // O JSON leva texto do banco (título de notícia importada de outro site,
+      // perguntas frequentes). Um "</script>" nesse texto fecharia a tag e
+      // abriria a página para código injetado — por isso todo "<" sai
+      // escapado. Para quem lê o JSON, "<" continua sendo "<".
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
     />
   );
 }
