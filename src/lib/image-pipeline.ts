@@ -21,6 +21,20 @@ export type Otimizada = {
 };
 
 /**
+ * Área em pixels (largura × altura), lida só do cabeçalho — sem decodificar
+ * a imagem. 0 quando não dá para ler. Serve para escolher a maior de duas
+ * versões da mesma foto.
+ */
+export async function areaEmPixels(entrada: Buffer): Promise<number> {
+  try {
+    const { width = 0, height = 0 } = await sharp(entrada, { failOn: "none" }).metadata();
+    return width * height;
+  } catch {
+    return 0;
+  }
+}
+
+/**
  * Normaliza e comprime a imagem enviada pelo painel.
  *
  * O que faz e por quê:
@@ -33,7 +47,8 @@ export type Otimizada = {
  *  - Remove metadados (EXIF/GPS). Além de reduzir bytes, evita publicar a
  *    localização de onde a foto foi tirada.
  *  - Preserva PNG quando há transparência (JPEG não tem canal alfa e o fundo
- *    viraria preto).
+ *    viraria preto). Transparência DE VERDADE: PNG com canal alfa mas sem
+ *    nenhum pixel transparente vira JPEG.
  *
  * Isso importa em dois pontos que o otimizador do Next NÃO cobre: o arquivo
  * cru é o que vai para o preview do WhatsApp e o que ocupa o volume.
@@ -57,7 +72,12 @@ export async function otimizarImagem(entrada: Buffer): Promise<Otimizada> {
     });
   }
 
-  const temAlpha = Boolean(meta.hasAlpha);
+  // Ter o canal alfa não basta: a arte das matérias do Contábeis, por exemplo,
+  // é PNG com alfa e 100% opaca. Mantida como PNG, uma capa de 1500 px ficava
+  // com até ~780 KB — acima dos 600 KB que o preview do WhatsApp aceita.
+  const temAlpha =
+    Boolean(meta.hasAlpha) &&
+    !(await sharp(entrada, { failOn: "none" }).stats()).isOpaque;
 
   const { data, info } = temAlpha
     ? await pipeline

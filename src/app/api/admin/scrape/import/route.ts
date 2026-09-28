@@ -6,7 +6,7 @@ import path from "path";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { UPLOAD_DIR } from "@/lib/uploads";
-import { otimizarImagem } from "@/lib/image-pipeline";
+import { areaEmPixels, otimizarImagem } from "@/lib/image-pipeline";
 import { buscarImagem } from "@/lib/scrape-fetch";
 import { buscarConteudo, parseDataRaspada } from "@/lib/scraper";
 import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
@@ -24,9 +24,10 @@ export const maxDuration = 300;
 /**
  * Teto por importação.
  *
- * Cada item aqui custa duas requisições externas (a página da matéria e a
- * imagem) mais o sharp. É a operação cara do módulo — a busca é uma
- * requisição só. Dez de cada vez cabe no tempo da rota com folga.
+ * Cada item aqui custa algumas requisições externas (a página da matéria e
+ * até duas versões da capa, fora as imagens do corpo) mais o sharp. É a
+ * operação cara do módulo — a busca é uma requisição só. Dez de cada vez
+ * cabe no tempo da rota com folga.
  */
 const MAX_ITENS = 10;
 
@@ -54,8 +55,11 @@ const MAX_IMAGENS_INLINE = 6;
  */
 async function baixarImagem(url: string): Promise<string | null> {
   const bytes = await buscarImagem(url);
-  if (!bytes) return null;
+  return bytes ? gravarImagem(bytes) : null;
+}
 
+/** Otimiza (sharp) e grava no volume. Devolve o caminho local, ou null. */
+async function gravarImagem(bytes: Buffer): Promise<string | null> {
   try {
     const otimizada = await otimizarImagem(bytes);
     const nome = `${Date.now()}-${randomBytes(6).toString("hex")}.${otimizada.ext}`;
@@ -66,6 +70,29 @@ async function baixarImagem(url: string): Promise<string | null> {
     console.warn("[scrape/import] imagem descartada:", (e as Error).message);
     return null;
   }
+}
+
+/**
+ * Capa em boa resolução: baixa as versões candidatas da mesma foto e grava
+ * só a maior.
+ *
+ * A imagem da LISTAGEM é miniatura — 234 px no TRE-PI, 200 px na Receita — e
+ * esticada na página da matéria saía borrada. O og:image da própria matéria
+ * é a mesma foto em tamanho de compartilhamento. Baixar as duas, em vez de
+ * confiar numa só, garante que a capa nunca fica menor do que era: se o
+ * og:image falhar ou for menor, a miniatura continua valendo.
+ */
+async function baixarCapa(candidatas: string[]): Promise<string | null> {
+  let melhor: { bytes: Buffer; area: number } | null = null;
+
+  for (const url of Array.from(new Set(candidatas.filter(Boolean)))) {
+    const bytes = await buscarImagem(url);
+    if (!bytes) continue;
+    const area = await areaEmPixels(bytes);
+    if (area > 0 && (!melhor || area > melhor.area)) melhor = { bytes, area };
+  }
+
+  return melhor ? gravarImagem(melhor.bytes) : null;
 }
 
 const RE_IMG_MD = /!\[([^\]]*)\]\((https?:\/\/[^\s)]+)\)/g;
@@ -183,7 +210,7 @@ export async function POST(request: Request) {
       // escreveu, melhor que a primeira frase do corpo.
       const materia = fonte.contentSelector
         ? await buscarConteudo(link, fonte.contentSelector)
-        : { content: "", subtitulo: "" };
+        : { content: "", subtitulo: "", imagem: "" };
       const conteudo = materia.content;
       const excerpt = String(pedido.excerpt ?? "").trim();
       const corpo = conteudo || excerpt;
@@ -193,7 +220,11 @@ export async function POST(request: Request) {
         continue;
       }
 
-      const capa = pedido.imageUrl ? await baixarImagem(String(pedido.imageUrl)) : null;
+      // Capa: a maior entre a miniatura da listagem e o og:image da matéria.
+      // O og:image só concorre quando a listagem TEM foto — sem ela, a matéria
+      // costuma não ter imagem própria e o og:image é a logo genérica do site.
+      const miniatura = String(pedido.imageUrl ?? "").trim();
+      const capa = miniatura ? await baixarCapa([materia.imagem, miniatura]) : null;
 
       // Baixa/otimiza as imagens do meio do texto e tira a que duplica a capa.
       const corpoFinal = await processarImagens(corpo, Boolean(capa));

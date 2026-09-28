@@ -103,21 +103,65 @@ export type Fonte = {
   contentSelector?: string | null;
 };
 
+/** Endereço de ARQUIVO de imagem — não de uma página que mostra a imagem. */
+const RE_ARQUIVO_IMAGEM = /\.(jpe?g|png|webp|gif|avif)(?:[?#]|$)|\/@@images\//i;
+
+/** O maior candidato de um srcset ("a.jpg 400w, b.jpg 1200w" → b.jpg). */
+function maiorDoSrcset(srcset: string): string {
+  let melhor = { url: "", peso: -1 };
+  for (const candidato of srcset.split(/,\s+/)) {
+    const [url, descritor = ""] = candidato.trim().split(/\s+/);
+    if (!url || url.startsWith("data:")) continue;
+    // "1200w" → 1200, "2x" → 2; sem descritor vale 1x.
+    const peso = parseFloat(descritor) || 1;
+    if (peso > melhor.peso) melhor = { url, peso };
+  }
+  return melhor.url;
+}
+
 /**
- * `src` nem sempre é o endereço real da imagem: temas com lazy-load põem um
- * placeholder no src e o endereço bom em data-src. Vale tentar os dois.
+ * Endereço da imagem na MAIOR resolução que a página oferece.
+ *
+ * O `<img>` da página costuma ser uma versão reduzida — na galeria do TRE-PI,
+ * 489 px — e ampliada na nossa coluna de 768 px ela sai borrada. Por ordem:
+ *  1. o link que embrulha a imagem, quando aponta para um arquivo de imagem
+ *     (lightbox, "ampliar", mídia do WordPress): é o original;
+ *  2. o maior candidato do srcset (antes pegava o primeiro, que é o menor);
+ *  3. o src — ou data-src, porque temas com lazy-load põem um placeholder no
+ *     src e o endereço bom ali.
  */
 function imagemDe($: cheerio.CheerioAPI, el: cheerio.Cheerio<any>): string {
   const img = el.first();
   if (img.length === 0) return "";
+
+  const link = (img.closest("a[href]").attr("href") ?? "").trim();
+  if (RE_ARQUIVO_IMAGEM.test(link)) return link;
+
+  const srcset = img.attr("srcset") || img.attr("data-srcset");
+  if (srcset) {
+    const maior = maiorDoSrcset(srcset);
+    if (maior) return maior;
+  }
+
   for (const attr of ["src", "data-src", "data-lazy-src", "data-original"]) {
     const v = img.attr(attr);
     if (v && !v.startsWith("data:")) return v;
   }
-  // <img srcset="a.jpg 200w, b.jpg 800w"> — pega o primeiro
-  const srcset = img.attr("srcset");
-  if (srcset) return srcset.split(",")[0]?.trim().split(/\s+/)[0] ?? "";
   return "";
+}
+
+/**
+ * Legenda da imagem: o `<figcaption>` da figura, que é a legenda de verdade
+ * ("Secretário de planejamento, Raimundo Júnior"); sem ele, o alt — desde que
+ * seja texto. O TRE-PI põe alt=".." nas fotos da galeria, e isso aparecia
+ * como legenda.
+ */
+function legendaDe($: cheerio.CheerioAPI, img: cheerio.Cheerio<any>): string {
+  const figcaption = limpar(img.closest("figure").find("figcaption").first().text());
+  const alt = limpar(img.attr("alt") ?? "");
+  const legenda = figcaption || (/[a-z0-9à-ÿ]/i.test(alt) ? alt : "");
+  // Colchete e parêntese quebrariam a marcação ![legenda](url).
+  return legenda.replace(/[[\]()]/g, "");
 }
 
 /** Nome de categoria válido: curto, sem virar uma data ou uma frase inteira. */
@@ -450,8 +494,7 @@ function extrairBlocos(
     const url = absoluta(src, base);
     // SVG e ícones minúsculos não são conteúdo; a validação real é no download.
     if (!url || /\.svg(\?|$)/i.test(url)) return;
-    const alt = ($(el).attr("alt") || "").trim().replace(/[[\]()]/g, "");
-    blocos.push(`![${alt}](${url})`);
+    blocos.push(`![${legendaDe($, $(el))}](${url})`);
   };
 
   const walk = (no: any) => {
@@ -461,6 +504,8 @@ function extrairBlocos(
 
       if (tag === "img") {
         imagem(filho);
+      } else if (tag === "figcaption") {
+        // Já entrou como legenda da imagem (legendaDe) — não repete como texto.
       } else if (tag === "iframe") {
         const url = urlDeVideo($(filho).attr("src") || "");
         if (url) blocos.push(`@video(${url})`);
@@ -543,20 +588,39 @@ function extrairSubtitulo($: cheerio.CheerioAPI): string {
 }
 
 /**
- * Corpo da matéria (marcação rica) e o subtítulo, da página dela.
+ * Imagem de compartilhamento da matéria (og:image), em URL absoluta.
+ *
+ * É a mesma foto da listagem, só que no tamanho de compartilhamento: 1140 px
+ * no TRE-PI (a listagem dá 234), 768 na Receita (200), 1500 no Contábeis
+ * (870). Quem decide se ela vira a capa é a importação.
+ */
+function extrairImagemPrincipal($: cheerio.CheerioAPI, base: string): string {
+  const bruta =
+    $('meta[property="og:image"], meta[name="og:image"]').first().attr("content") ||
+    $('meta[name="twitter:image"], meta[property="twitter:image"]').first().attr("content") ||
+    $('link[rel="image_src"]').first().attr("href") ||
+    "";
+  return absoluta(bruta.trim(), base);
+}
+
+/**
+ * Corpo da matéria (marcação rica), o subtítulo e a imagem principal, da
+ * página dela.
  *
  * A listagem só tem o resumo picotado ("[...]"), que não serve de rascunho.
  */
 export async function buscarConteudo(
   link: string,
   contentSelector: string
-): Promise<{ content: string; subtitulo: string }> {
+): Promise<{ content: string; subtitulo: string; imagem: string }> {
   const html = await buscarHtml(link);
   const $ = cheerio.load(html);
+  const base = baseEfetiva($, link);
 
   const subtitulo = extrairSubtitulo($);
+  const imagem = extrairImagemPrincipal($, base);
   const corpo = $(contentSelector).first();
-  if (corpo.length === 0) return { content: "", subtitulo };
+  if (corpo.length === 0) return { content: "", subtitulo, imagem };
 
   // Fora o que não é matéria. Figure e iframe FICAM: são imagem e vídeo.
   // Além do óbvio (script/form), tira blocos de compartilhamento, relacionadas
@@ -571,8 +635,8 @@ export async function buscarConteudo(
     )
     .remove();
 
-  const blocos = extrairBlocos($, corpo, baseEfetiva($, link));
-  if (blocos.length > 0) return { content: blocos.join("\n\n"), subtitulo };
+  const blocos = extrairBlocos($, corpo, base);
+  if (blocos.length > 0) return { content: blocos.join("\n\n"), subtitulo, imagem };
 
   // Sem bloco reconhecível, o texto pode estar solto em <div>. Quebrar pelas
   // linhas em branco preserva os parágrafos em vez de fundir tudo num bloco.
@@ -581,8 +645,8 @@ export async function buscarConteudo(
     .split(/\n\s*\n/)
     .map((t) => limpar(t))
     .filter((t) => t.length > 30);
-  if (soltos.length > 1) return { content: soltos.join("\n\n"), subtitulo };
+  if (soltos.length > 1) return { content: soltos.join("\n\n"), subtitulo, imagem };
 
   const unico = limpar(bruto);
-  return { content: unico.length > 40 ? unico : "", subtitulo };
+  return { content: unico.length > 40 ? unico : "", subtitulo, imagem };
 }
