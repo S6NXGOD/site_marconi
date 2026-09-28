@@ -164,6 +164,67 @@
   @apply pointer-events-none float-left h-0 text-slate-400;
 }
 
+/* ——— Perguntas frequentes (<details> nativo — nenhuma linha de JavaScript) ———
+   O navegador cuida de abrir e fechar; aqui só entra a animação. Onde algum
+   recurso não existe, o item abre na hora e segue funcionando. */
+.faq-item > summary {
+  list-style: none;
+}
+.faq-item > summary::-webkit-details-marker {
+  display: none;
+}
+.faq-item .faq-icone {
+  transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease,
+    color 0.3s ease;
+}
+/* Aberta: o "+" gira até virar "×" e ganha o dourado; a pergunta também.
+   O "> summary" pesa mais que o group-hover do ícone: sem ele, com o dedo ou
+   o mouse em cima, o "×" ficava dourado sobre o fundo dourado e sumia. */
+.faq-item[open] > summary .faq-icone {
+  @apply rotate-45 border-marconi bg-marconi text-white;
+}
+.faq-item[open] .faq-pergunta {
+  @apply text-marconi;
+}
+
+/* A resposta desliza ao abrir e ao fechar (Chrome/Edge 131+). O
+   interpolate-size deixa animar até "auto" — a altura real do texto. */
+@supports selector(::details-content) {
+  :root {
+    interpolate-size: allow-keywords;
+  }
+  .faq-item::details-content {
+    block-size: 0;
+    overflow-y: clip;
+    transition: block-size 0.3s ease-out, content-visibility 0.3s allow-discrete;
+  }
+  .faq-item[open]::details-content {
+    block-size: auto;
+  }
+}
+
+/* Cada pergunta surge ao entrar na tela, guiada pela própria rolagem — sem
+   observador de JavaScript. Quem pediu menos movimento não vê animação. */
+@keyframes faq-surge {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .faq-item {
+      animation: faq-surge linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 70%;
+    }
+  }
+}
+
 /* Realce sutil de seleção de texto */
 ::selection {
   background-color: #b8942e;
