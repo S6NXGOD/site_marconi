@@ -22,7 +22,6 @@ import { breadcrumbSchema, noticiaSchema } from "@/lib/schema";
 import { formatarData } from "@/lib/datas";
 import { ConteudoNoticia } from "@/lib/conteudo";
 import { resumoExibicao, resumoRepeteCorpo } from "@/lib/resumo";
-import { mensagemDaNoticia } from "@/lib/share";
 
 export const dynamic = "force-dynamic";
 
@@ -210,10 +209,7 @@ export default async function NoticiaPage({
                 <span className="sm:hidden">Voltar</span>
               </Link>
 
-              <ShareButton
-                title={news.title}
-                mensagem={mensagemDaNoticia({ title: news.title, summary: resumoDe(news), url })}
-              />
+              <ShareButton title={news.title} summary={resumoDe(news)} url={url} />
             </div>
 
             {/* Chip + título + meta */}
@@ -258,7 +254,9 @@ export default async function NoticiaPage({
         </header>
 
         {/* ——— Corpo da matéria ——— */}
-        <article className="bg-white pb-16 pt-10 sm:pb-20 sm:pt-14">
+        {/* data-pulso-*: a Audiência sabe qual matéria é e onde está o texto
+            (para medir se foi lida até o fim). */}
+        <article data-pulso-noticia={news.id} className="bg-white pb-16 pt-10 sm:pb-20 sm:pt-14">
           <div className="section-shell">
             {/* Capa — só quando existe foto real.
                 Sem foto, um bloco 16:9 vazio só empurraria o texto para baixo. */}
@@ -276,7 +274,9 @@ export default async function NoticiaPage({
 
             {/* Texto — com subtítulos, imagens e vídeos do corpo. */}
             <div className={`mx-auto max-w-3xl ${news.coverImage ? "mt-10" : ""}`}>
-              <ConteudoNoticia content={news.content} />
+              <div data-pulso-corpo>
+                <ConteudoNoticia content={news.content} />
+              </div>
 
               {/* ——— Assuntos (tags) ——— cada uma leva à busca por aquele tema. */}
               {news.tags.length > 0 && (
@@ -334,6 +334,7 @@ export default async function NoticiaPage({
                 </p>
                 <Link
                   href="/#contato"
+                  data-pulso="cta_especialista"
                   className="inline-flex items-center justify-center gap-2 rounded-full bg-marconi px-5 py-2.5 text-sm font-semibold text-white shadow-gold transition-all hover:-translate-y-0.5 hover:bg-marconi-dark"
                 >
                   Falar com um especialista

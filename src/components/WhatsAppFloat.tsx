@@ -155,6 +155,8 @@ export default function WhatsAppFloat({
                       href={waLink(o.phone, o.message)}
                       target="_blank"
                       rel="noopener noreferrer"
+                      // Audiência: conta como "chamou no WhatsApp".
+                      data-pulso="contato_whatsapp"
                       onClick={fechar}
                       className="flex items-center gap-3 rounded-2xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-black/5 transition-all hover:-translate-y-0.5 hover:shadow-md"
                     >

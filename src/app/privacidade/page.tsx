@@ -39,6 +39,15 @@ export default function PrivacidadePage() {
           estritamente técnicos, necessários ao funcionamento do site e à sessão
           do painel administrativo. Não utilizamos cookies de publicidade.
         </li>
+        <li>
+          <strong>Medição de audiência:</strong> contamos, de forma anônima e
+          agregada, as páginas abertas, se uma matéria foi lida até o fim, o
+          tempo de leitura, o tipo de aparelho (celular ou computador) e o site
+          de origem da visita (apenas o domínio, como google.com). Não usamos
+          cookies para isso e não guardamos seu endereço IP: ele é transformado,
+          junto com o navegador, num código que muda todos os dias e não pode ser
+          ligado a você. Os registros são apagados após 13 meses.
+        </li>
       </ul>
       <p>Não coletamos dados de pagamento neste site.</p>
 
@@ -47,6 +56,10 @@ export default function PrivacidadePage() {
         <li>Responder ao seu contato e conduzir tratativas comerciais.</li>
         <li>Enviar os avisos de notícias e prazos que você solicitou.</li>
         <li>Operar, manter e melhorar o site.</li>
+        <li>
+          Entender, em números agregados, quais conteúdos são mais úteis aos
+          leitores (medição de audiência).
+        </li>
       </ul>
 
       <LegalH2>3. Base legal</LegalH2>

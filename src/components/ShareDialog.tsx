@@ -18,6 +18,8 @@ type Props = {
   onFechar: () => void;
   /** a mensagem pronta: título, resumo, chamada e link */
   mensagem: string;
+  /** chamado quando a pessoa de fato compartilha (abre o app, o Web ou copia) */
+  onCompartilhar?: () => void;
 };
 
 const botao =
@@ -35,7 +37,7 @@ const botaoClaro = `${botao} border border-slate-200 bg-white text-conplan hover
  *  - abrir no WhatsApp Web;
  *  - copiar a mensagem, para colar em qualquer conversa ou grupo.
  */
-export default function ShareDialog({ aberto, onFechar, mensagem }: Props) {
+export default function ShareDialog({ aberto, onFechar, mensagem, onCompartilhar }: Props) {
   const [copiada, setCopiada] = useState(false);
   const botaoApp = useRef<HTMLAnchorElement>(null);
   const tituloId = useId();
@@ -69,11 +71,15 @@ export default function ShareDialog({ aberto, onFechar, mensagem }: Props) {
 
   // Fecha logo depois do clique, não durante: o link precisa terminar de
   // abrir o WhatsApp antes de sair da tela.
-  const fecharDepois = () => setTimeout(onFechar, 150);
+  const fecharDepois = () => {
+    onCompartilhar?.();
+    setTimeout(onFechar, 150);
+  };
 
   async function copiar() {
     try {
       await navigator.clipboard.writeText(mensagem);
+      if (!copiada) onCompartilhar?.();
       setCopiada(true);
     } catch {
       // Sem acesso à área de transferência: a mensagem está à vista logo

@@ -2,7 +2,7 @@
 // Docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   // "native" = máquina de desenvolvimento.
   // Os alvos Debian são obrigatórios no Railway: sem eles o Prisma Client
   // não encontra o engine no container e o app quebra em produção.
@@ -55,10 +55,69 @@ model News {
 
   /// Tags livres (IRPF 2026, Impostos…). Complementam a vertente (category),
   /// não a substituem: category diz o SETOR; a tag diz o ASSUNTO.
-  tags        Tag[]
+  tags Tag[]
+
+  /// Audiência: visitas e cliques desta matéria (ver PageView/ClickEvent).
+  pageViews   PageView[]
+  clickEvents ClickEvent[]
 
   @@index([isPublished, publishedAt])
   @@index([category])
+}
+
+/// ——— Audiência (medição própria do portal) ———
+///
+/// Sem cookie e sem guardar IP: quem visita vira um identificador ANÔNIMO que
+/// muda todo dia (hash com um sal diário que é apagado no dia seguinte — ver
+/// AnalyticsSalt). Dá para contar visitantes do dia, mas não para saber quem
+/// é ninguém, nem juntar os dias de uma mesma pessoa.
+
+/// Uma abertura de página do site público.
+model PageView {
+  /// Gerado no navegador: é o que liga a leitura e o tempo à mesma visita.
+  id        String   @id
+  createdAt DateTime @default(now())
+  /// Caminho sem query ("/noticias/slug").
+  path      String
+  newsId    String?
+  news      News?    @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  /// Identificador anônimo do dia.
+  visitor   String
+  /// whatsapp | busca | instagram | facebook | push | direto | outros
+  source    String
+  /// Só o domínio de onde veio (nunca a URL inteira).
+  refHost   String?
+  /// celular | computador
+  device    String
+  /// Segundos com a página visível na tela.
+  seconds   Int      @default(0)
+  /// Leu de verdade: passou de 75% do texto com pelo menos 10s na página.
+  read      Boolean  @default(false)
+
+  @@index([createdAt])
+  @@index([newsId, createdAt])
+}
+
+/// Clique que importa para o negócio: compartilhar, chamar no WhatsApp…
+model ClickEvent {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  /// compartilhar | contato_whatsapp | cta_especialista
+  kind      String
+  path      String
+  newsId    String?
+  news      News?    @relation(fields: [newsId], references: [id], onDelete: Cascade)
+  visitor   String
+
+  @@index([createdAt])
+  @@index([newsId, createdAt])
+}
+
+/// Sal do identificador diário. Um por dia (fuso do Piauí), apagado no dia
+/// seguinte: sem ele, não há como refazer o hash e ligá-lo a alguém.
+model AnalyticsSalt {
+  day  String @id
+  salt String
 }
 
 /// Assunto livre de uma notícia — reaproveitável entre várias (m2m).
@@ -201,14 +260,13 @@ model BusinessAreaService {
   @@index([areaId, order])
 }
 
-
 /// Fonte de raspagem: uma página de listagem de notícias e os seletores CSS
 /// que dizem onde estão os dados nela. Fica no banco, e não no código, para
 /// um site mudar de layout sem exigir deploy.
 model ScrapeSource {
   id       String       @id @default(cuid())
-  name     String       /// ex.: "TCE-PI — Notícias"
-  url      String       /// página de listagem
+  name     String /// ex.: "TCE-PI — Notícias"
+  url      String /// página de listagem
   category NewsCategory @default(PUBLICO) /// categoria das notícias importadas
   isActive Boolean      @default(true)
 

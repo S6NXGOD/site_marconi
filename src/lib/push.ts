@@ -4,6 +4,7 @@ import { prisma } from "./prisma";
 import { SITE_URL } from "./site";
 import { formatarDataCurta } from "./datas";
 import { deadlineLabel } from "./news";
+import { comVia } from "./share";
 
 /**
  * Notificações push do PWA (Web Push).
@@ -103,7 +104,8 @@ export async function notificarNoticia(n: {
   await enviarPush({
     title: n.title,
     body: (n.excerpt ?? "").trim() || "Toque para ler no portal.",
-    url: `${SITE_URL}/noticias/${n.slug}`,
+    // ?via=push: a Audiência separa quem chegou pela notificação.
+    url: comVia(`${SITE_URL}/noticias/${n.slug}`, "push"),
     image: urlAbsoluta(n.coverImage || "/og.png"),
     tag: `noticia-${n.slug}`,
   });
@@ -155,7 +157,7 @@ export async function lembrarPrazos(
     await enviarPush({
       title: p.title,
       body: `🗓️ ${deadlineLabel(p.date).text} — ${formatarDataCurta(p.date)}`,
-      url: `${SITE_URL}/#alertas`,
+      url: comVia(`${SITE_URL}/#alertas`, "push"),
       tag: `prazo-${p.id}`,
     });
     return;
@@ -164,7 +166,7 @@ export async function lembrarPrazos(
   await enviarPush({
     title: `🗓️ ${prazos.length} prazos ${expressaoMarco(dias)}`,
     body: listaTitulos(prazos),
-    url: `${SITE_URL}/#alertas`,
+    url: comVia(`${SITE_URL}/#alertas`, "push"),
     tag: `prazos-marco-${dias}`,
   });
 }
@@ -177,7 +179,7 @@ export async function notificarAprovacao(a: {
   await enviarPush({
     title: `✅ ${a.label} — ${a.municipality}`,
     body: "Mais um município com a gestão aprovada pela CONPLAN.",
-    url: `${SITE_URL}/#prova-social`,
+    url: comVia(`${SITE_URL}/#prova-social`, "push"),
     tag: "conta-aprovada",
   });
 }

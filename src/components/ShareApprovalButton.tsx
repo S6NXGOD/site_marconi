@@ -1,6 +1,7 @@
 "use client";
 
-import { linkWhatsApp, mensagemDaAprovacao } from "@/lib/share";
+import { comVia, linkWhatsApp, mensagemDaAprovacao } from "@/lib/share";
+import { registrarClique } from "@/lib/pulso-cliente";
 
 /**
  * Compartilha UMA conta aprovada no WhatsApp. Botão verde bem visível no rodapé
@@ -17,8 +18,9 @@ export default function ShareApprovalButton({
       municipality: approval.municipality,
       label: approval.label,
       // origin (e não SITE_URL) para funcionar igual em produção e local.
-      url: `${window.location.origin}/contas-aprovadas`,
+      url: comVia(`${window.location.origin}/contas-aprovadas`, "whatsapp"),
     });
+    registrarClique("compartilhar");
     window.open(linkWhatsApp(mensagem), "_blank", "noopener,noreferrer");
   }
 

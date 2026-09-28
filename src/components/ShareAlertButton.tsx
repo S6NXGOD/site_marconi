@@ -2,7 +2,8 @@
 
 import { deadlineLabel } from "@/lib/news";
 import { formatarDataCurta } from "@/lib/datas";
-import { linkWhatsApp, mensagemDoAlerta } from "@/lib/share";
+import { comVia, linkWhatsApp, mensagemDoAlerta } from "@/lib/share";
+import { registrarClique } from "@/lib/pulso-cliente";
 import type { AlertCategory } from "@prisma/client";
 
 type Props = {
@@ -40,9 +41,10 @@ export default function ShareAlertButton({ alert, compacto = false }: Props) {
       prazo: deadlineLabel(alert.date).text,
       dia: formatarDataCurta(alert.date),
       // origin (e não SITE_URL) para funcionar igual em produção e local.
-      url: `${window.location.origin}/prazos/${setor}`,
+      url: comVia(`${window.location.origin}/prazos/${setor}`, "whatsapp"),
     });
 
+    registrarClique("compartilhar");
     window.open(linkWhatsApp(mensagem), "_blank", "noopener,noreferrer");
   }
 

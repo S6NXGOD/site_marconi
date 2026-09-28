@@ -136,6 +136,20 @@ export function mensagemDaAprovacao({
   ].join("\n\n");
 }
 
+/**
+ * Marca a origem no link compartilhado (`?via=whatsapp`, `?via=push`).
+ *
+ * O WhatsApp não conta ao site de onde o leitor veio: sem a marca, todo o
+ * tráfego dele cairia em "direto" na Audiência. O `<link rel=canonical>` da
+ * página continua sem o parâmetro, então o Google não vê duas páginas; e o
+ * site tira o `via` da barra de endereço assim que lê (pulso-cliente.ts).
+ */
+export function comVia(url: string, via: string): string {
+  const [base, ancora] = url.split("#");
+  const junta = base.includes("?") ? "&" : "?";
+  return `${base}${junta}via=${encodeURIComponent(via)}${ancora !== undefined ? `#${ancora}` : ""}`;
+}
+
 /** Link que abre o WhatsApp já com a mensagem escrita (app no celular, Web no desktop). */
 export function linkWhatsApp(mensagem: string): string {
   return `https://wa.me/?text=${encodeURIComponent(mensagem)}`;

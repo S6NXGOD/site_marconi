@@ -4,6 +4,7 @@ import { SITE_URL, SITE_NAME, IS_INDEXABLE } from "@/lib/site";
 import { JsonLd } from "@/components/JsonLd";
 import { organizacaoSchema, siteSchema } from "@/lib/schema";
 import RegisterPWA from "@/components/RegisterPWA";
+import Pulso from "@/components/Pulso";
 import "./globals.css";
 
 // Sans-serif para textos
@@ -97,6 +98,8 @@ export default function RootLayout({
         <JsonLd data={organizacaoSchema()} />
         <JsonLd data={siteSchema()} />
         <RegisterPWA />
+        {/* Audiência (painel → Audiência): sem cookie, sem dado pessoal. */}
+        <Pulso />
       </body>
     </html>
   );
