@@ -8,6 +8,12 @@ type Props = {
   duration?: number;
   prefix?: string;
   suffix?: string;
+  /**
+   * Quanto o número precisa entrar na tela para começar. Só na vertical: uma
+   * margem negativa nas laterais deixava o "0" inicial — estreito e colado na
+   * borda esquerda no celular — de fora para sempre, e o contador nunca subia.
+   */
+  margem?: string;
 };
 
 // Contador que anima de 0 até `to` quando entra na viewport (framer-motion).
@@ -16,9 +22,10 @@ export default function AnimatedCounter({
   duration = 2,
   prefix = "",
   suffix = "",
+  margem = "-80px 0px",
 }: Props) {
   const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true, margin: "-80px" });
+  const inView = useInView(ref, { once: true, margin: margem as `${number}px` });
   const [value, setValue] = useState(0);
 
   useEffect(() => {
