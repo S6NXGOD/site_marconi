@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 import { useFormState, useFormStatus } from "react-dom";
 import ImageCropUploader from "./ImageCropUploader";
 import PublishDateField from "./PublishDateField";
+import PublicacaoCampos, { type ModoPublicacao } from "./PublicacaoCampos";
 import SlugField from "./SlugField";
 import RichEditor from "./RichEditor";
 import TagField from "./TagField";
@@ -23,6 +24,8 @@ type NewsInitial = {
   isPublished: boolean;
   /** "yyyy-mm-dd" no fuso do Piauí */
   publishedAt: string;
+  /** "yyyy-mm-ddThh:mm" no fuso do Piauí; vazio = sem agendamento */
+  scheduledAt: string;
   /** nomes das tags de assunto já atribuídas */
   tags: string[];
 };
@@ -35,6 +38,15 @@ type Props = {
   siteUrl?: string;
   /** tags que já existem no sistema (com uso), para sugerir */
   tagSuggestions?: TagRank[];
+  /** hora do pico de acessos, para a sugestão do agendamento */
+  melhorHora?: number | null;
+};
+
+const dicaDoModo: Record<ModoPublicacao, string> = {
+  rascunho: "Fica só no painel. Ninguém vê e ninguém é avisado.",
+  agora: "Vai ao ar ao salvar e avisa quem ativou as notificações.",
+  agendar:
+    "Entra no ar sozinha nessa hora e só então avisa quem ativou as notificações. No site, sai com a data do agendamento.",
 };
 
 const initialState: NewsFormState = { status: "idle" };
@@ -61,8 +73,13 @@ export default function NewsForm({
   submitLabel,
   siteUrl,
   tagSuggestions = [],
+  melhorHora,
 }: Props) {
   const [state, formAction] = useFormState(action, initialState);
+  const [modo, setModo] = useState<ModoPublicacao>(
+    initial?.isPublished ? "agora" : initial?.scheduledAt ? "agendar" : "rascunho"
+  );
+  const [quando, setQuando] = useState(initial?.scheduledAt ?? "");
   // Título e categoria viram estado porque alimentam os previews do endereço
   // e da assinatura enquanto a pessoa digita.
   const [title, setTitle] = useState(initial?.title ?? "");
@@ -146,9 +163,13 @@ export default function NewsForm({
         texto={`${title}\n${corpoTexto}`}
       />
 
-      <div className="grid gap-6 sm:grid-cols-2">
-        <PublishDateField name="publishedAt" defaultValue={initial?.publishedAt} />
-      </div>
+      {/* Agendada sai com a data do agendamento: um segundo campo de data aqui
+          só daria margem a dois dias diferentes na mesma tela. */}
+      {modo !== "agendar" && (
+        <div className="grid gap-6 sm:grid-cols-2">
+          <PublishDateField name="publishedAt" defaultValue={initial?.publishedAt} />
+        </div>
+      )}
 
       <SlugField
         name="slug"
@@ -200,20 +221,29 @@ export default function NewsForm({
         )}
       </div>
 
-      <label className="flex items-center gap-3 rounded-xl border border-slate-200 bg-cloud px-4 py-3">
-        <input
-          type="checkbox"
-          name="isPublished"
-          defaultChecked={initial?.isPublished ?? false}
-          className="h-4 w-4 rounded border-slate-300 text-marconi focus:ring-marconi"
+      <div>
+        <p className="mb-1.5 text-sm font-medium text-conplan">Quando vai ao ar</p>
+        <input type="hidden" name="modoPublicacao" value={modo} />
+        <input type="hidden" name="scheduledAt" value={modo === "agendar" ? quando : ""} />
+        <PublicacaoCampos
+          modo={modo}
+          onModo={setModo}
+          quando={quando}
+          onQuando={setQuando}
+          rotuloAgora={initial?.isPublished ? "No ar" : "Publicar agora"}
+          semAgendar={initial?.isPublished}
+          melhorHora={melhorHora}
+          erro={state.errors?.scheduledAt}
         />
-        <span className="text-sm font-medium text-conplan">
-          Publicar imediatamente
-        </span>
-      </label>
+        <p className="mt-2 text-xs text-slate-500">
+          {initial?.isPublished && modo === "agora"
+            ? "Já está no site. Salvar só atualiza o conteúdo."
+            : dicaDoModo[modo]}
+        </p>
+      </div>
 
       <div className="flex items-center gap-3 pt-2">
-        <SubmitButton label={submitLabel} />
+        <SubmitButton label={modo === "agendar" ? "Agendar publicação" : submitLabel} />
         <Link
           href="/admin/noticias"
           className="rounded-full border border-slate-300 px-6 py-3 text-sm font-semibold text-slate-600 transition-colors hover:bg-slate-50"

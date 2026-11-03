@@ -1,20 +1,25 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { melhorHoraParaPublicar } from "@/lib/audiencia";
 import ScrapeRunner from "@/components/admin/ScrapeRunner";
 
 export default async function ImportarNoticiasPage() {
-  const fontes = await prisma.scrapeSource.findMany({
-    where: { isActive: true },
-    orderBy: { name: "asc" },
-    select: { id: true, name: true, category: true },
-  });
+  const [fontes, melhorHora] = await Promise.all([
+    prisma.scrapeSource.findMany({
+      where: { isActive: true },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, category: true },
+    }),
+    melhorHoraParaPublicar(),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-conplan">Buscar notícias</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Busque nas fontes cadastradas e escolha o que virar rascunho.
+          Busque nas fontes cadastradas, escolha o que importar e decida quando
+          vai ao ar.
         </p>
       </div>
 
@@ -41,7 +46,7 @@ export default async function ImportarNoticiasPage() {
           </Link>
         </div>
       ) : (
-        <ScrapeRunner fontes={fontes} />
+        <ScrapeRunner melhorHora={melhorHora} fontes={fontes} />
       )}
     </div>
   );

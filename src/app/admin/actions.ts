@@ -11,9 +11,10 @@ import { slugify } from "@/lib/slugify";
 import { sanitizarConteudo, htmlParaTexto } from "@/lib/sanitize";
 import { tagsDoFormulario } from "@/lib/tags";
 import { autorDe } from "@/lib/news";
-import { dataDeInput, inputDeData } from "@/lib/datas";
+import { dataDeInput, inputDeData, instanteDeInput } from "@/lib/datas";
 import { lerAlertasCSV, filtrarNovos } from "@/lib/csv";
-import { notificarNoticia, notificarAprovacao } from "@/lib/push";
+import { notificarAprovacao } from "@/lib/push";
+import { avisarUmaVez } from "@/lib/agendamento";
 
 /** Dispara uma notificação sem nunca derrubar a ação que a originou. */
 async function avisar(fn: () => Promise<void>) {
@@ -158,7 +159,7 @@ export async function toggleApprovalActive(id: string, isActive: boolean) {
 export type NewsFormState = {
   status: "idle" | "error";
   message?: string;
-  errors?: Partial<Record<"title" | "content" | "category", string>>;
+  errors?: Partial<Record<"title" | "content" | "category" | "scheduledAt", string>>;
 };
 
 function isNewsCategory(value: string): value is NewsCategory {
@@ -191,6 +192,7 @@ function normalizarQuebras(v: string): string {
 }
 
 function parseNewsForm(formData: FormData) {
+  const modo = String(formData.get("modoPublicacao") ?? "");
   return {
     title: String(formData.get("title") ?? "").trim(),
     excerpt: normalizarQuebras(String(formData.get("excerpt") ?? "")).trim(),
@@ -201,7 +203,9 @@ function parseNewsForm(formData: FormData) {
     coverImage: String(formData.get("coverImage") ?? "").trim(),
     slugInput: String(formData.get("slug") ?? "").trim(),
     publishedAt: String(formData.get("publishedAt") ?? "").trim(),
-    isPublished: formData.get("isPublished") === "on",
+    isPublished: modo === "agora",
+    agendar: modo === "agendar",
+    scheduledAt: instanteDeInput(String(formData.get("scheduledAt") ?? "")),
     tags: tagsDoFormulario(String(formData.get("tags") ?? "")),
   };
 }
@@ -226,6 +230,11 @@ function validateNews(data: ReturnType<typeof parseNewsForm>): NewsFormState | n
   // mas nenhum conteúdo.
   if (htmlParaTexto(data.content).length < 10) errors.content = "O conteúdo está muito curto.";
   if (!isNewsCategory(data.category)) errors.category = "Selecione uma categoria.";
+  if (data.agendar) {
+    if (!data.scheduledAt) errors.scheduledAt = "Informe o dia e a hora.";
+    else if (data.scheduledAt.getTime() <= Date.now())
+      errors.scheduledAt = "Esse horário já passou. Escolha um no futuro.";
+  }
   if (Object.keys(errors).length > 0) {
     return { status: "error", message: "Verifique os campos destacados.", errors };
   }
@@ -251,14 +260,16 @@ export async function createNews(
       category: data.category as NewsCategory,
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,
+      scheduledAt: data.agendar ? data.scheduledAt : null,
       publishedAt: dataDePublicacao(data.publishedAt),
       tags: relacaoTags(data.tags, false),
     },
-    select: { title: true, slug: true, isPublished: true, excerpt: true, coverImage: true },
+    select: { id: true, title: true, slug: true, isPublished: true, excerpt: true, coverImage: true },
   });
 
-  // Só notifica se já nasce publicada — rascunho não avisa ninguém.
-  if (nova.isPublished) await avisar(() => notificarNoticia(nova));
+  // Só notifica se já nasce publicada: rascunho não avisa ninguém, e a agendada
+  // avisa quando for ao ar (ver lib/agendamento).
+  if (nova.isPublished) await avisar(() => avisarUmaVez([nova]));
 
   revalidateAll();
   redirect("/admin/noticias?ok=created");
@@ -275,10 +286,9 @@ export async function updateNews(
   if (invalid) return invalid;
 
   // Precisa da data atual para preservar o horário quando só o texto mudou.
-  // O isPublished anterior diz se esta edição é a PRIMEIRA publicação.
   const atual = await prisma.news.findUnique({
     where: { id },
-    select: { publishedAt: true, isPublished: true },
+    select: { publishedAt: true },
   });
 
   const atualizada = await prisma.news.update({
@@ -292,16 +302,15 @@ export async function updateNews(
       category: data.category as NewsCategory,
       coverImage: data.coverImage || null,
       isPublished: data.isPublished,
+      scheduledAt: data.agendar ? data.scheduledAt : null,
       publishedAt: dataDePublicacao(data.publishedAt, atual?.publishedAt),
       tags: relacaoTags(data.tags, true),
     },
-    select: { title: true, slug: true, excerpt: true, coverImage: true },
+    select: { id: true, title: true, slug: true, excerpt: true, coverImage: true },
   });
 
-  // Notifica só na transição rascunho → publicada (não a cada edição).
-  if (!atual?.isPublished && data.isPublished) {
-    await avisar(() => notificarNoticia(atualizada));
-  }
+  // A cada edição de uma publicada isto passa aqui, mas só o primeiro aviso sai.
+  if (data.isPublished) await avisar(() => avisarUmaVez([atualizada]));
 
   revalidateAll();
   redirect("/admin/noticias?ok=updated");
@@ -317,11 +326,22 @@ export async function toggleNewsPublish(id: string, isPublished: boolean) {
   await requireSession();
   const n = await prisma.news.update({
     where: { id },
-    data: { isPublished },
-    select: { title: true, slug: true, excerpt: true, coverImage: true },
+    // Publicar uma agendada na mão vale pela hora marcada: não sobra agendamento.
+    data: { isPublished, scheduledAt: null },
+    select: { id: true, title: true, slug: true, excerpt: true, coverImage: true },
   });
   // Publicar pelo atalho da lista também avisa.
-  if (isPublished) await avisar(() => notificarNoticia(n));
+  if (isPublished) await avisar(() => avisarUmaVez([n]));
+  revalidateAll();
+}
+
+/** Tira da fila: a notícia volta a ser rascunho, com tudo o que já tinha. */
+export async function cancelarAgendamento(id: string) {
+  await requireSession();
+  await prisma.news.updateMany({
+    where: { id, isPublished: false },
+    data: { scheduledAt: null },
+  });
   revalidateAll();
 }
 

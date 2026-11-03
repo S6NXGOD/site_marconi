@@ -2,7 +2,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SITE_URL } from "@/lib/site";
-import { inputDeData } from "@/lib/datas";
+import { inputDeData, inputDeInstante } from "@/lib/datas";
+import { melhorHoraParaPublicar } from "@/lib/audiencia";
 import { getTagSuggestions } from "@/lib/get-tags";
 import { updateNews } from "@/app/admin/actions";
 import NewsForm from "@/components/admin/NewsForm";
@@ -12,12 +13,13 @@ export default async function EditarNoticiaPage({
 }: {
   params: { id: string };
 }) {
-  const [news, tagSuggestions] = await Promise.all([
+  const [news, tagSuggestions, melhorHora] = await Promise.all([
     prisma.news.findUnique({
       where: { id: params.id },
       include: { tags: { select: { name: true } } },
     }),
     getTagSuggestions(),
+    melhorHoraParaPublicar(),
   ]);
   if (!news) notFound();
 
@@ -47,6 +49,7 @@ export default async function EditarNoticiaPage({
           submitLabel="Salvar alterações"
           siteUrl={SITE_URL}
           tagSuggestions={tagSuggestions}
+          melhorHora={melhorHora}
           initial={{
             title: news.title,
             slug: news.slug,
@@ -55,6 +58,7 @@ export default async function EditarNoticiaPage({
             coverImage: news.coverImage,
             category: news.category,
             publishedAt: inputDeData(news.publishedAt),
+            scheduledAt: news.scheduledAt ? inputDeInstante(news.scheduledAt) : "",
             isPublished: news.isPublished,
             tags: news.tags.map((t) => t.name),
           }}

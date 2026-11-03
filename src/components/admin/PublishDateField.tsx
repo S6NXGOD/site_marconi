@@ -115,7 +115,8 @@ export default function PublishDateField({ name, defaultValue }: Props) {
       {futuro && (
         <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
           Data no futuro. A notícia aparece no site assim que for publicada,
-          mesmo com esta data.
+          mesmo com esta data. Para ela só entrar nesse dia, use Agendar, lá
+          embaixo.
         </p>
       )}
     </div>

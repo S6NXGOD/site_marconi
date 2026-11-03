@@ -116,3 +116,47 @@ const fmtDia = new Intl.DateTimeFormat("pt-BR", {
 export function formatarDiaPrazo(value: Date | string): string {
   return fmtDia.format(asDate(value));
 }
+
+// ————— Hora marcada (agendamento) —————
+
+const fmtHora = new Intl.DateTimeFormat("en-GB", {
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+  timeZone: FUSO,
+});
+
+/**
+ * "2026-11-04T09:00" digitado no painel → o instante real.
+ *
+ * O <input type="datetime-local"> não carrega fuso nenhum: o que a pessoa digita
+ * é hora do Piauí, e o servidor em UTC leria como 3 horas antes. O deslocamento
+ * pode ser fixo porque o Piauí não tem horário de verão (ver FUSO).
+ */
+export function instanteDeInput(valor: string): Date | null {
+  const v = valor.trim();
+  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(v)) return null;
+  const data = new Date(`${v}:00-03:00`);
+  return Number.isNaN(data.getTime()) ? null : data;
+}
+
+/** Instante → valor do <input type="datetime-local">, na hora do Piauí. */
+export function inputDeInstante(value: Date | string): string {
+  return `${inputDeData(value)}T${fmtHora.format(asDate(value))}`;
+}
+
+/** "qua., 04 de nov. às 09:00" */
+export function formatarAgendamento(value: Date | string): string {
+  return `${formatarDiaPrazo(value)} às ${fmtHora.format(asDate(value))}`;
+}
+
+/** "em 25 min", "em 3 h", "em 2 dias" — ou "agora", se a hora já chegou. */
+export function faltaPara(value: Date | string, agora: Date = new Date()): string {
+  const minutos = Math.ceil((asDate(value).getTime() - agora.getTime()) / 60_000);
+  if (minutos <= 0) return "agora";
+  if (minutos < 60) return `em ${minutos} min`;
+  const horas = Math.round(minutos / 60);
+  if (horas < 24) return `em ${horas} h`;
+  const dias = Math.round(horas / 24);
+  return dias === 1 ? "em 1 dia" : `em ${dias} dias`;
+}

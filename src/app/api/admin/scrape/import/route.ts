@@ -10,11 +10,13 @@ import { areaEmPixels, otimizarImagem } from "@/lib/image-pipeline";
 import { buscarImagem } from "@/lib/scrape-fetch";
 import { buscarConteudo, parseDataRaspada } from "@/lib/scraper";
 import { slugUnico, slugDaNoticia } from "@/lib/slug-unico";
-import { dataDeInput } from "@/lib/datas";
+import { dataDeInput, instanteDeInput } from "@/lib/datas";
 import { autorDe } from "@/lib/news";
 import { resumoInteligente } from "@/lib/resumo";
 import { markupParaHtml } from "@/lib/markup-html";
 import { normalizarTags } from "@/lib/tags";
+import { htmlParaTexto } from "@/lib/sanitize";
+import { avisarUmaVez } from "@/lib/agendamento";
 
 export const runtime = "nodejs";
 // Cada item baixa a página da matéria e a imagem. Com vários selecionados,
@@ -42,6 +44,35 @@ type ItemPedido = {
 
 /** Teto de imagens INLINE por matéria — cada uma custa download + sharp. */
 const MAX_IMAGENS_INLINE = 6;
+
+/**
+ * Menos texto que isto não vai ao ar sem alguém olhar, mesmo que a pessoa tenha
+ * pedido: costuma ser o seletor pegando um pedaço da página, e não a matéria.
+ */
+const MIN_TEXTO_SEM_REVISAO = 200;
+
+type Publicacao =
+  | { modo: "rascunho" }
+  | { modo: "agora" }
+  | { modo: "agendar"; inicio: Date; intervaloMs: number };
+
+/** Lê o pedido do navegador. Devolve o motivo, em texto, se não der para aceitar. */
+function lerPublicacao(bruto: {
+  modo?: string;
+  inicio?: string;
+  intervaloMin?: number;
+} = {}): Publicacao | string {
+  if (bruto.modo === "agora") return { modo: "agora" };
+  if (bruto.modo !== "agendar") return { modo: "rascunho" };
+
+  const inicio = instanteDeInput(String(bruto.inicio ?? ""));
+  if (!inicio) return "Informe o dia e a hora do agendamento.";
+  if (inicio.getTime() <= Date.now()) return "Esse horário já passou. Escolha um no futuro.";
+
+  const minutos = Number(bruto.intervaloMin ?? 0);
+  if (!Number.isFinite(minutos) || minutos < 0) return "Intervalo inválido.";
+  return { modo: "agendar", inicio, intervaloMs: minutos * 60_000 };
+}
 
 /**
  * Baixa uma imagem externa, otimiza (sharp) e grava no volume. Devolve o
@@ -153,11 +184,20 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
   }
 
-  let body: { sourceId?: string; itens?: ItemPedido[] };
+  let body: {
+    sourceId?: string;
+    itens?: ItemPedido[];
+    publicacao?: { modo?: string; inicio?: string; intervaloMin?: number };
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "Requisição inválida." }, { status: 400 });
+  }
+
+  const publicacao = lerPublicacao(body.publicacao);
+  if (typeof publicacao === "string") {
+    return NextResponse.json({ error: publicacao }, { status: 400 });
   }
 
   const fonte = await prisma.scrapeSource.findUnique({
@@ -177,8 +217,16 @@ export async function POST(request: Request) {
   // link do mesmo host da fonte cadastrada.
   const hostDaFonte = new URL(fonte.url).hostname;
 
-  const criadas: { title: string; slug: string }[] = [];
+  const criadas: {
+    title: string;
+    slug: string;
+    status: "rascunho" | "publicada" | "agendada";
+    scheduledAt: Date | null;
+  }[] = [];
   const falhas: { title: string; motivo: string }[] = [];
+  const noAr: { id: string; title: string; slug: string; excerpt: string | null; coverImage: string | null }[] = [];
+  // Conta só as que entraram na fila: uma que falhou não deixa buraco no horário.
+  let naFila = 0;
 
   for (const pedido of pedidos) {
     const title = String(pedido.title ?? "").trim();
@@ -237,6 +285,19 @@ export async function POST(request: Request) {
       // assunto, e a pessoa ajusta na edição.
       const tags = normalizarTags([String(pedido.category ?? "")]);
 
+      const html = markupParaHtml(corpoFinal);
+
+      // O material é de terceiros e aqui ninguém olhou o resultado. Se a matéria
+      // não veio inteira (só o resumo da listagem, ou quase nada), fica em
+      // rascunho mesmo com o pedido de publicar — o aviso não dá para desfazer.
+      const textoInteiro =
+        Boolean(conteudo) && htmlParaTexto(html).length >= MIN_TEXTO_SEM_REVISAO;
+      const publicarJa = publicacao.modo === "agora" && textoInteiro;
+      const agendadaPara =
+        publicacao.modo === "agendar" && textoInteiro
+          ? new Date(publicacao.inicio.getTime() + naFila++ * publicacao.intervaloMs)
+          : null;
+
       const nova = await prisma.news.create({
         data: {
           title,
@@ -247,15 +308,16 @@ export async function POST(request: Request) {
           // Resumo: prefere o subtítulo da matéria (o que o autor escreveu);
           // sem ele, o resumo da listagem; por último, a 1ª frase do corpo.
           excerpt: resumoDaMateria(materia.subtitulo || excerpt || corpoFinal),
-          content: markupParaHtml(corpoFinal),
+          content: html,
           coverImage: capa,
           category: fonte.category,
           author: autorDe(fonte.category),
-          // Sempre rascunho: o material é de terceiros e passa por edição e
-          // conferência antes de ir ao ar. Publicar direto é o que este fluxo
-          // existe para impedir.
-          isPublished: false,
-          publishedAt,
+          isPublished: publicarJa,
+          scheduledAt: agendadaPara,
+          // Indo ao ar agora, sai com a data de agora: com a da fonte, o aviso
+          // chegaria e a notícia não apareceria no topo. Agendada faz o mesmo
+          // quando sair; em rascunho, a da fonte fica para a pessoa decidir.
+          publishedAt: publicarJa ? new Date() : publishedAt,
           sourceUrl: link,
           sourceName: fonte.name,
           tags: tags.length
@@ -267,14 +329,28 @@ export async function POST(request: Request) {
               }
             : undefined,
         },
-        select: { title: true, slug: true },
+        select: { id: true, title: true, slug: true, excerpt: true, coverImage: true },
       });
 
-      criadas.push(nova);
+      if (publicarJa) noAr.push(nova);
+      criadas.push({
+        title: nova.title,
+        slug: nova.slug,
+        status: publicarJa ? "publicada" : agendadaPara ? "agendada" : "rascunho",
+        scheduledAt: agendadaPara,
+      });
     } catch (e) {
       console.error("[scrape/import] falhou em", link, e);
       falhas.push({ title, motivo: "Erro ao importar esta matéria." });
     }
+  }
+
+  // Depois do laço, para as publicadas juntas virarem UM aviso só. Uma falha aqui
+  // não pode dizer que a importação falhou: as notícias já estão no ar.
+  try {
+    await avisarUmaVez(noAr);
+  } catch (e) {
+    console.error("[push] falha ao notificar:", e);
   }
 
   return NextResponse.json({ criadas, falhas });

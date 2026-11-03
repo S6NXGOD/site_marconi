@@ -7,6 +7,7 @@ import { SITE_URL } from "@/lib/site";
 import { pct, totaisPorNoticia } from "@/lib/audiencia";
 import DeleteNewsButton from "@/components/admin/DeleteNewsButton";
 import PublishToggleButton from "@/components/admin/PublishToggleButton";
+import { AgendadaAcoes, AgendadaHora } from "@/components/admin/AgendadaStatus";
 import ShareNewsButton from "@/components/admin/ShareNewsButton";
 
 const dateFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -25,7 +26,7 @@ export default async function NoticiasAdminPage({
 }: {
   searchParams: { ok?: string };
 }) {
-  const news = await prisma.news.findMany({
+  const todas = await prisma.news.findMany({
     orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
     select: {
       id: true,
@@ -35,8 +36,15 @@ export default async function NoticiasAdminPage({
       category: true,
       isPublished: true,
       publishedAt: true,
+      scheduledAt: true,
     },
   });
+
+  // A fila vem primeiro, na ordem em que vai ao ar.
+  const fila = todas
+    .filter((n) => n.scheduledAt)
+    .sort((a, b) => a.scheduledAt!.getTime() - b.scheduledAt!.getTime());
+  const news = [...fila, ...todas.filter((n) => !n.scheduledAt)];
 
   // Mensagem pronta do botão de compartilhar — só das publicadas, porque o
   // link de um rascunho dá 404. O corpo só é buscado para quem não tem resumo
@@ -124,18 +132,27 @@ export default async function NoticiasAdminPage({
                     >
                       {categoryLabels[n.category]}
                     </span>
-                    <span className="text-xs text-slate-400">
-                      {dateFmt.format(n.publishedAt)}
-                    </span>
+                    {/* A data da agendada ainda vai mudar: mostrar a atual só confundiria. */}
+                    {n.scheduledAt ? (
+                      <AgendadaHora scheduledAt={n.scheduledAt} />
+                    ) : (
+                      <span className="text-xs text-slate-400">
+                        {dateFmt.format(n.publishedAt)}
+                      </span>
+                    )}
                     {n.isPublished && <ResumoAudiencia id={n.id} dados={audiencia.get(n.id)} />}
                   </div>
                 </div>
 
                 {/* Status + ações */}
-                <div className="mt-3 flex items-center justify-between gap-2 border-t border-slate-100 pt-3 lg:mt-0 lg:shrink-0 lg:justify-end lg:border-0 lg:pt-0">
-                  <PublishToggleButton id={n.id} isPublished={n.isPublished} />
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-3 lg:mt-0 lg:shrink-0 lg:justify-end lg:border-0 lg:pt-0">
+                  {n.scheduledAt ? (
+                    <AgendadaAcoes id={n.id} />
+                  ) : (
+                    <PublishToggleButton id={n.id} isPublished={n.isPublished} />
+                  )}
 
-                  <div className="flex items-center gap-1">
+                  <div className="ml-auto flex items-center gap-1 lg:ml-0">
                     {n.isPublished && <ShareNewsButton mensagem={mensagemDe(n)} />}
                     <Link
                       href={`/admin/noticias/${n.id}/editar`}

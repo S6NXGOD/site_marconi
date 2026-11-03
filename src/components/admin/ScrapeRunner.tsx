@@ -3,8 +3,9 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { formatarData } from "@/lib/datas";
+import { faltaPara, formatarAgendamento, formatarData, instanteDeInput } from "@/lib/datas";
 import { categoryLabels, categoryBadgeClasses } from "@/lib/news";
+import PublicacaoCampos, { type ModoPublicacao } from "./PublicacaoCampos";
 import type { NewsCategory } from "@prisma/client";
 
 type Fonte = { id: string; name: string; category: NewsCategory };
@@ -30,7 +31,12 @@ type Busca = {
   fonte: Fonte;
 };
 
-type Criada = { title: string; slug: string };
+type Criada = {
+  title: string;
+  slug: string;
+  status: "rascunho" | "publicada" | "agendada";
+  scheduledAt: string | null;
+};
 type Falha = { title: string; motivo: string };
 
 /**
@@ -50,10 +56,40 @@ const PERIODOS = [
 /** Mesmo teto da rota de importação — cada item custa duas requisições. */
 const MAX_SELECAO = 10;
 
+/** Espaçar é o que faz o agendamento render: um lote vira uma semana de portal. */
+const INTERVALOS = [
+  { valor: 0, label: "Todas juntas" },
+  { valor: 30, label: "Uma a cada 30 min" },
+  { valor: 60, label: "Uma por hora" },
+  { valor: 120, label: "Uma a cada 2 horas" },
+  { valor: 240, label: "Uma a cada 4 horas" },
+  { valor: 1440, label: "Uma por dia" },
+];
+
 const fieldClass =
   "w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-conplan outline-none transition-colors focus:border-marconi focus:ring-2 focus:ring-marconi/20";
 
-export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
+/** "2 publicadas agora, 1 em rascunho." */
+function resumoDoResultado(criadas: Criada[]): string {
+  if (criadas.length === 0) return "Nenhuma notícia importada.";
+  const conta = (status: Criada["status"]) => criadas.filter((c) => c.status === status).length;
+  const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? "" : "s"}`;
+  const partes = [
+    conta("publicada") > 0 && `${plural(conta("publicada"), "publicada")} agora`,
+    conta("agendada") > 0 && plural(conta("agendada"), "agendada"),
+    conta("rascunho") > 0 && `${conta("rascunho")} em rascunho`,
+  ].filter(Boolean);
+  return `${partes.join(", ")}.`;
+}
+
+export default function ScrapeRunner({
+  fontes,
+  melhorHora,
+}: {
+  fontes: Fonte[];
+  /** hora do pico de acessos, para a sugestão do agendamento */
+  melhorHora?: number | null;
+}) {
   const [sourceId, setSourceId] = useState(fontes[0]?.id ?? "");
   const [dias, setDias] = useState(7);
 
@@ -63,7 +99,20 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
 
   const [marcados, setMarcados] = useState<Set<string>>(new Set());
   const [importando, setImportando] = useState(false);
-  const [resultado, setResultado] = useState<{ criadas: Criada[]; falhas: Falha[] } | null>(null);
+  const [resultado, setResultado] = useState<{
+    criadas: Criada[];
+    falhas: Falha[];
+    pedido: ModoPublicacao;
+  } | null>(null);
+
+  const [modo, setModo] = useState<ModoPublicacao>("rascunho");
+  const [quando, setQuando] = useState("");
+  const [intervalo, setIntervalo] = useState(0);
+
+  const inicio = instanteDeInput(quando);
+  const faltaHorario = modo === "agendar" && (!inicio || inicio.getTime() <= Date.now());
+  // O intervalo só existe com mais de uma: com uma só, um valor antigo não conta.
+  const espaco = marcados.size > 1 ? intervalo : 0;
 
   async function buscar() {
     setBuscando(true);
@@ -88,22 +137,29 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
   }
 
   async function importar() {
-    if (!busca || marcados.size === 0) return;
+    if (!busca || marcados.size === 0 || faltaHorario) return;
     setImportando(true);
     setErro(null);
     try {
       const itens = busca.itens.filter((i) => marcados.has(i.link));
+      // A fonte lista da mais nova para a mais antiga. Na fila é o contrário: a
+      // mais nova entra por último e termina como a manchete.
+      if (modo === "agendar") itens.reverse();
       const res = await fetch("/api/admin/scrape/import", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sourceId, itens }),
+        body: JSON.stringify({
+          sourceId,
+          itens,
+          publicacao: { modo, inicio: quando, intervaloMin: espaco },
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
         setErro(data.error ?? "Falha na importação.");
         return;
       }
-      setResultado(data);
+      setResultado({ ...data, pedido: modo });
       // Marca as importadas na lista, para a tela refletir o novo estado sem
       // exigir uma nova busca.
       const ok = new Set(data.criadas.map((c: Criada) => c.title));
@@ -229,14 +285,12 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
       {resultado && (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
           <p className="font-semibold text-emerald-800">
-            {resultado.criadas.length === 0
-              ? "Nenhuma notícia importada."
-              : `${resultado.criadas.length} ${resultado.criadas.length === 1 ? "notícia importada" : "notícias importadas"} como rascunho.`}
+            {resumoDoResultado(resultado.criadas)}
           </p>
 
           {resultado.criadas.length > 0 && (
             <>
-              <ul className="mt-3 space-y-1.5">
+              <ul className="mt-3 space-y-2.5">
                 {resultado.criadas.map((c) => (
                   <li key={c.slug}>
                     <Link
@@ -245,6 +299,16 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
                     >
                       {c.title}
                     </Link>
+                    {c.scheduledAt && (
+                      <p className="mt-0.5 text-xs font-medium text-emerald-800">
+                        {formatarAgendamento(c.scheduledAt)}
+                      </p>
+                    )}
+                    {c.status === "rascunho" && resultado.pedido !== "rascunho" && (
+                      <p className="mt-0.5 text-xs font-medium text-amber-800">
+                        Ficou em rascunho: o texto não veio completo. Confira antes de publicar.
+                      </p>
+                    )}
                   </li>
                 ))}
               </ul>
@@ -252,7 +316,7 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
                 href="/admin/noticias"
                 className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-emerald-700 px-4 py-2 text-xs font-semibold text-white transition-colors hover:bg-emerald-800"
               >
-                Editar e publicar em Notícias
+                Ver em Notícias
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path d="M5 12h14M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -433,11 +497,36 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
 
               {/* Barra fixa no celular: com a lista longa, o botão ficaria no
                   fim da rolagem e a pessoa não veria a contagem subir. */}
-              <div className="sticky bottom-0 -mx-5 mt-4 border-t border-slate-200 bg-white/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+              <div className="sticky bottom-0 -mx-5 mt-4 max-h-[85dvh] space-y-2.5 overflow-y-auto border-t border-slate-200 bg-white/95 px-5 py-3 backdrop-blur sm:-mx-6 sm:px-6">
+                <PublicacaoCampos
+                  modo={modo}
+                  onModo={setModo}
+                  quando={quando}
+                  onQuando={setQuando}
+                  melhorHora={melhorHora}
+                  compacto
+                />
+
+                {modo === "agendar" && marcados.size > 1 && (
+                  <select
+                    id="intervalo"
+                    aria-label="Como entram no ar"
+                    value={intervalo}
+                    onChange={(e) => setIntervalo(Number(e.target.value))}
+                    className={fieldClass}
+                  >
+                    {INTERVALOS.map((i) => (
+                      <option key={i.valor} value={i.valor}>
+                        {i.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
                 <button
                   type="button"
                   onClick={importar}
-                  disabled={importando || marcados.size === 0}
+                  disabled={importando || marcados.size === 0 || faltaHorario}
                   className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-full bg-conplan px-6 text-sm font-semibold text-white transition-all hover:-translate-y-0.5 hover:bg-conplan/90 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 sm:w-auto"
                 >
                   {importando ? (
@@ -450,13 +539,26 @@ export default function ScrapeRunner({ fontes }: { fontes: Fonte[] }) {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3" />
                       </svg>
-                      Importar {marcados.size > 0 ? marcados.size : ""}{" "}
+                      {modo === "agora" ? "Publicar" : modo === "agendar" ? "Agendar" : "Importar"}{" "}
+                      {marcados.size > 0 ? marcados.size : ""}{" "}
                       {marcados.size === 1 ? "selecionada" : "selecionadas"}
                     </>
                   )}
                 </button>
-                <p className="mt-2 text-xs text-slate-400">
-                  Entram como rascunho. Nada vai ao ar sem você publicar.
+                <p className="text-xs text-slate-500">
+                  {modo === "rascunho" && "Entram como rascunho. Nada vai ao ar sem você publicar."}
+                  {modo === "agora" &&
+                    "Vão ao ar sem revisão e avisam quem ativou as notificações. Matéria que vier sem o texto completo fica em rascunho."}
+                  {modo === "agendar" &&
+                    (faltaHorario || !inicio
+                      ? "Escolha um dia e uma hora no futuro (horário do Piauí)."
+                      : espaco > 0
+                        ? `A primeira ${formatarAgendamento(inicio)}, a última ${formatarAgendamento(
+                            new Date(inicio.getTime() + (marcados.size - 1) * espaco * 60_000)
+                          )}. Cada uma avisa ao entrar.`
+                        : marcados.size > 1
+                          ? `Vão ao ar juntas ${faltaPara(inicio)}, com um aviso só.`
+                          : `Vai ao ar ${faltaPara(inicio)} e só então avisa quem ativou as notificações.`)}
                 </p>
               </div>
             </>

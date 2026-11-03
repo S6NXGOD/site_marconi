@@ -5,6 +5,9 @@ const nextConfig = {
   // Não expõe a versão do Next para quem escaneia o site.
   poweredByHeader: false,
 
+  // Liga src/instrumentation.ts — é de lá que sai o publicador de agendadas.
+  experimental: { instrumentationHook: true },
+
   // Falhar o build em erro de tipo/lint é proposital: melhor quebrar o deploy
   // do que subir o site com erro silencioso.
   eslint: { ignoreDuringBuilds: false },

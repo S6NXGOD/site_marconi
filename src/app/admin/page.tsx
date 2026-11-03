@@ -40,6 +40,7 @@ async function getDashboardData() {
         category: true,
         isPublished: true,
         publishedAt: true,
+        scheduledAt: true,
       },
     }),
     prisma.news.count(),
@@ -176,10 +177,12 @@ export default async function AdminDashboard() {
                     className={`shrink-0 rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                       n.isPublished
                         ? "bg-green-100 text-green-700"
-                        : "bg-slate-100 text-slate-500"
+                        : n.scheduledAt
+                          ? "bg-marconi/10 text-marconi"
+                          : "bg-slate-100 text-slate-500"
                     }`}
                   >
-                    {n.isPublished ? "Publicada" : "Rascunho"}
+                    {n.isPublished ? "Publicada" : n.scheduledAt ? "Agendada" : "Rascunho"}
                   </span>
                 </li>
               ))}

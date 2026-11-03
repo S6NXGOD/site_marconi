@@ -384,3 +384,14 @@ export function melhorJanela(horas: number[]): { inicio: number; fim: number; ac
   }
   return melhor;
 }
+
+/**
+ * Hora em que começa o pico de acessos dos últimos 30 dias — a sugestão do
+ * campo de agendamento. Com pouca visita, o "pico" é acaso: melhor não sugerir.
+ */
+export async function melhorHoraParaPublicar(): Promise<number | null> {
+  const fim = new Date();
+  const inicio = new Date(fim.getTime() - 30 * 86_400_000);
+  const janela = melhorJanela(await horarios(inicio, fim));
+  return janela && janela.acessos >= 30 ? janela.inicio : null;
+}

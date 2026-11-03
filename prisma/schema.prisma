@@ -48,10 +48,17 @@ model News {
   /// Data editorial — é esta que o site exibe e ordena. Sai da data do dia,
   /// mas pode ser ajustada no painel (matéria sobre um fato de ontem).
   publishedAt DateTime     @default(now())
-  /// Quando a linha foi criada. Não muda e não aparece no site: é o registro
-  /// de quando a notícia entrou de fato, mesmo que a data editorial seja outra.
+  /// Quando a notícia entrou de fato, mesmo que a data editorial seja outra. Não
+  /// aparece no site e só muda uma vez: a agendada "entra" ao ir ao ar, não ao
+  /// ser cadastrada — é por ela que "Mais notícias" ordena.
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @default(now()) @updatedAt
+  /// Hora marcada para ir ao ar. Preenchida = agendada (ainda com isPublished
+  /// falso, então o site inteiro continua sem enxergá-la). Ver lib/agendamento.
+  scheduledAt DateTime?
+  /// Quando o push desta notícia saiu. Cada notícia avisa UMA vez na vida:
+  /// despublicar e publicar de novo não pode notificar todo mundo outra vez.
+  notifiedAt  DateTime?
 
   /// Tags livres (IRPF 2026, Impostos…). Complementam a vertente (category),
   /// não a substituem: category diz o SETOR; a tag diz o ASSUNTO.
@@ -62,6 +69,7 @@ model News {
   clickEvents ClickEvent[]
 
   @@index([isPublished, publishedAt])
+  @@index([isPublished, scheduledAt])
   @@index([category])
 }
 

@@ -95,12 +95,14 @@ export async function enviarPush(payload: PushPayload): Promise<void> {
  * o iOS acrescenta "de Portal Marconi Nunes" por conta própria, e com a manchete
  * no título isso lê natural. O corpo é o resumo e a capa entra como preview.
  */
-export async function notificarNoticia(n: {
+export type NoticiaAviso = {
   title: string;
   slug: string;
   excerpt?: string | null;
   coverImage?: string | null;
-}): Promise<void> {
+};
+
+async function notificarNoticia(n: NoticiaAviso): Promise<void> {
   await enviarPush({
     title: n.title,
     body: (n.excerpt ?? "").trim() || "Toque para ler no portal.",
@@ -108,6 +110,31 @@ export async function notificarNoticia(n: {
     url: comVia(`${SITE_URL}/noticias/${n.slug}`, "push"),
     image: urlAbsoluta(n.coverImage || "/og.png"),
     tag: `noticia-${n.slug}`,
+  });
+}
+
+/**
+ * Aviso das notícias que entraram no ar juntas.
+ *
+ * - 1 notícia → a notificação detalhada, com a manchete.
+ * - Várias    → UMA notificação agrupada, como nos prazos: importar cinco de uma
+ *   vez não pode virar cinco vibrações seguidas no celular de quem se inscreveu.
+ *
+ * Quem garante que cada notícia avisa uma vez só é `avisarUmaVez`
+ * (lib/agendamento), que é por onde as ações passam.
+ */
+export async function notificarNoticias(noticias: NoticiaAviso[]): Promise<void> {
+  if (noticias.length === 0) return;
+  if (noticias.length === 1) return notificarNoticia(noticias[0]);
+
+  const capa = noticias.find((n) => n.coverImage)?.coverImage;
+  await enviarPush({
+    title: `📰 ${noticias.length} novas notícias no portal`,
+    body: listaTitulos(noticias),
+    url: comVia(`${SITE_URL}/noticias`, "push"),
+    image: urlAbsoluta(capa || "/og.png"),
+    // Por lote: um lote novo não pode substituir o anterior ainda não lido.
+    tag: `noticias-${noticias[0].slug}`,
   });
 }
 
@@ -122,16 +149,16 @@ function expressaoMarco(dias: number): string {
 }
 
 /** Junta os títulos num corpo curto: "IPTU · ISS · DAS +3". */
-function listaTitulos(prazos: PrazoLembrete[], max = 130): string {
+function listaTitulos(itens: { title: string }[], max = 130): string {
   let texto = "";
   let usados = 0;
-  for (const p of prazos) {
+  for (const p of itens) {
     const proximo = texto ? `${texto} · ${p.title}` : p.title;
     if (usados > 0 && proximo.length > max) break;
     texto = proximo;
     usados++;
   }
-  const resto = prazos.length - usados;
+  const resto = itens.length - usados;
   return resto > 0 ? `${texto} +${resto}` : texto;
 }
 

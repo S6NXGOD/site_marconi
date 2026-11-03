@@ -2,10 +2,14 @@ import Link from "next/link";
 import { createNews } from "@/app/admin/actions";
 import { SITE_URL } from "@/lib/site";
 import { getTagSuggestions } from "@/lib/get-tags";
+import { melhorHoraParaPublicar } from "@/lib/audiencia";
 import NewsForm from "@/components/admin/NewsForm";
 
 export default async function NovaNoticiaPage() {
-  const tagSuggestions = await getTagSuggestions();
+  const [tagSuggestions, melhorHora] = await Promise.all([
+    getTagSuggestions(),
+    melhorHoraParaPublicar(),
+  ]);
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
@@ -28,6 +32,7 @@ export default async function NovaNoticiaPage() {
           submitLabel="Criar notícia"
           siteUrl={SITE_URL}
           tagSuggestions={tagSuggestions}
+          melhorHora={melhorHora}
         />
       </div>
     </div>
